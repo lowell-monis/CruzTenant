@@ -896,6 +896,18 @@ details[open] .trace-summary {
   font-family: var(--font-sans);
 }
 
+.footer-disclaimer {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 850px;
+  margin: 12px auto;
+  line-height: 1.45;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid var(--border-glow);
+  padding: 10px 16px;
+  border-radius: 8px;
+}
+
 .footer-sub {
   font-size: 0.78rem;
   margin-top: 4px;

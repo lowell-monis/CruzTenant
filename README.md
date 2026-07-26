@@ -5,6 +5,7 @@
 **Developer:** Lowell Monis  
 **Project Repository:** [https://github.com/lowell-monis/CruzTenant](https://github.com/lowell-monis/CruzTenant)  
 **Live Demo:** [https://lowell-monis.github.io/CruzTenant](https://lowell-monis.github.io/CruzTenant)  
+**Kaggle Writeup:** [https://www.kaggle.com/competitions/cruz-into-the-gemmaverse/writeups](https://www.kaggle.com/competitions/cruz-into-the-gemmaverse/writeups)  
 
 ---
 

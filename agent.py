@@ -365,7 +365,7 @@ if __name__ == "__main__":
     test_res = agent.analyze_scenario(
         "my landlord in Downtown Santa Cruz sent an 18% rent increase notice from $2,800 to $3,304 starting next month. is this legal?",
         tenant_name="Alex Rivera",
-        landlord_name="Pacific Vista Management"
+        landlord_name="Bayshore Coastal Rental Mgmt"
     )
     print("test agent analysis execution complete.")
     print("illegal detected:", test_res["is_illegal"])

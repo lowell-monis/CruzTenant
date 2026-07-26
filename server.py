@@ -22,7 +22,7 @@ SAMPLE_CASES = [
         "category": "rent stabilization violation",
         "location": "Downtown Santa Cruz (95060)",
         "tenant_name": "Alex Rivera",
-        "landlord_name": "Pacific Vista Management",
+        "landlord_name": "Bayshore Coastal Rental Mgmt",
         "description": "tenant received a written notice raising rent from $2,800/month to $3,304/month (an 18.0% increase) with 30 days notice.",
         "input_text": "i live on Pacific Ave in Downtown Santa Cruz. my current rent is $2,800 per month. yesterday my landlord served me a 30-day rent increase notice raising my monthly rent to $3,304 starting next month. that is an 18% increase! is this legal under Santa Cruz law?"
     },
@@ -32,7 +32,7 @@ SAMPLE_CASES = [
         "category": "just cause & relocation violation",
         "location": "Beach Flats, Santa Cruz (95060)",
         "tenant_name": "Maria & Carlos Santos",
-        "landlord_name": "Oceanfront Investments LLC",
+        "landlord_name": "BlueHarbor Assets LLC",
         "description": "tenant of 3 years received a 60-day notice to terminate tenancy for major property remodeling offering $0 relocation assistance.",
         "input_text": "we have rented our apartment in Beach Flats near the Boardwalk for over 3 years. we pay $3,200/month. last week the landlord served a 60-day Notice to Terminate Tenancy stating they plan to do building renovations. they offered $0 in relocation assistance and told us to move out. is this allowed under Santa Cruz Municipal Code?"
     },
@@ -42,7 +42,7 @@ SAMPLE_CASES = [
         "category": "California AB 12 violation",
         "location": "Live Oak / East Cliff (95062)",
         "tenant_name": "Jordan Chen (UCSC Student)",
-        "landlord_name": "Seabright Properties",
+        "landlord_name": "Crestview Haven Properties",
         "description": "landlord demanding a 2-month security deposit ($5,600) on a $2,800/month unfurnished apartment.",
         "input_text": "i am a UCSC student moving into an unfurnished apartment near Seabright. monthly rent is $2,800. the landlord is demanding i pay a security deposit of $5,600 (two full months of rent) prior to move-in. didn't California pass AB 12 limiting security deposits to 1 month rent?"
     },
@@ -52,7 +52,7 @@ SAMPLE_CASES = [
         "category": "habitability violation",
         "location": "Westside Santa Cruz (95060)",
         "tenant_name": "Samantha Taylor",
-        "landlord_name": "Westside Residential Co",
+        "landlord_name": "Apex Redwood Residential Co",
         "description": "lease clause threatening tenant with immediate eviction if tenant reports severe mold or plumbing failures to City Code Enforcement.",
         "input_text": "my lease on the Westside has a clause stating: 'tenant agrees not to report any physical building defects to Santa Cruz City Inspectors without prior landlord consent, or tenancy will be immediately terminated for breach.' the bathroom has severe black mold and leaking pipes that the landlord refuses to fix."
     }

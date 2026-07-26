@@ -24,8 +24,9 @@
   --text-muted: #94a3b8;
   --text-dim: #64748b;
   
-  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Fira Code', monospace;
 }
 
 * {
@@ -42,6 +43,10 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   position: relative;
+}
+
+h1, h2, h3, h4, h5, .brand-title, .hero-title {
+  font-family: var(--font-heading);
 }
 
 /* Coastal Ocean & UCSC Gold Ambient Glow */
@@ -832,7 +837,7 @@ details[open] .trace-summary {
   color: #e2e8f0;
   white-space: pre-wrap;
   max-height: 480px;
-  overflow-y.auto;
+  overflow-y: auto;
   line-height: 1.5;
 }
 

@@ -160,34 +160,6 @@ class GemmaAgentEngine:
         else:
             return {"status": "error", "message": f"unknown tool: {tool_name}"}
 
-    def call_live_gemini_api(self, prompt: str) -> Optional[Dict[str, Any]]:
-        """makes a live HTTP request to Gemini/Gemma API using GEMINI_API_KEY."""
-        if not self.api_key:
-            return None
-            
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.api_key}"
-        payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],
-            "generationConfig": {"temperature": 0.2}
-        }
-        
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode('utf-8'),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=12) as response:
-                if response.status == 200:
-                    resp_body = response.read().decode('utf-8')
-                    return json.loads(resp_body)
-        except Exception as e:
-            # API failure / Rate limit 429
-            return None
-        return None
-
     def analyze_scenario(self, tenant_text: str, tenant_name: str = "Jane Doe", landlord_name: str = "Property Mgmt Co") -> Dict[str, Any]:
         """performs analysis via live API or returns explicit rate-limit error + legal aid fallback."""
         
@@ -222,10 +194,10 @@ class GemmaAgentEngine:
         text_lower = tenant_text.lower()
         tool_results = []
         
-        rent_matches = re.findall(r'\$?([0-9,]{4,5})', tenant_text)
+        rent_matches = re.findall(r'\$?([0-9,]{3,5})', tenant_text)
         rent_vals = [float(r.replace(',', '')) for r in rent_matches]
         
-        has_explicit_rent_hike = ("increase" in text_lower or "rent hike" in text_lower or "raised" in text_lower) and len(rent_vals) >= 2
+        has_explicit_rent_hike = ("increase" in text_lower or "hike" in text_lower or "raised" in text_lower or "rent" in text_lower) and len(rent_vals) >= 2
         if has_explicit_rent_hike:
             tool_args = {"current_rent": rent_vals[0], "proposed_rent": rent_vals[1], "zip_code": "95060"}
             trace_steps.append({

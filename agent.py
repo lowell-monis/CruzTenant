@@ -180,33 +180,6 @@ class GemmaAgentEngine:
         else:
             return {"status": "error", "message": f"unknown tool: {tool_name}"}
 
-    def call_live_gemini_api(self, prompt: str) -> Optional[Dict[str, Any]]:
-        """makes a live HTTP request to Gemini/Gemma API using GEMINI_API_KEY."""
-        if not self.api_key or self.api_key == "your_gemini_api_key_here":
-            return None
-            
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.api_key}"
-        payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],
-            "generationConfig": {"temperature": 0.2}
-        }
-        
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode('utf-8'),
-                headers={"Content-Type": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=12) as response:
-                if response.status == 200:
-                    resp_body = response.read().decode('utf-8')
-                    return json.loads(resp_body)
-        except Exception:
-            return None
-        return None
-
     def analyze_scenario(self, tenant_text: str, tenant_name: str = "Jane Doe", landlord_name: str = "Property Mgmt Co") -> Dict[str, Any]:
         """performs analysis via live API or returns explicit rate-limit error + legal aid fallback."""
         
@@ -232,7 +205,7 @@ class GemmaAgentEngine:
                 "legal_aid_resources": sc_db.SANTA_CRUZ_LEGAL_AID_RESOURCES
             }
 
-        # Live API mode
+        # Live Agent Execution Mode
         trace_steps = [{
             "step": 1,
             "type": "thought",
@@ -388,7 +361,7 @@ Dear {landlord_name},
 
 I am writing to formally contest the recent written notice / lease terms issued for my rental unit in Santa Cruz, CA. 
 
-Following a statutory audit conducted via CruzTenant using Gemma 4 function tools against Santa Cruz Municipal Code and California Housing Statutes, the following specific violations were identified regarding my tenancy:
+Following a statutory audit under Santa Cruz Municipal Code and California Housing Statutes, the following specific violations were identified regarding my tenancy:
 
 {claims_block}
 

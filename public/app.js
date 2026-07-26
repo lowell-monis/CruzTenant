@@ -156,18 +156,21 @@ document.addEventListener('DOMContentLoaded', () => {
         analyze document
       `;
 
-      if (data.status === 'success') {
+      if (data.agent_trace) {
         renderAgentTrace(data.agent_trace);
-        renderAnalysisResults(data);
-      } else {
-        alert('analysis error: ' + (data.message || 'unknown error'));
       }
+      renderAnalysisResults(data);
     })
     .catch(err => {
       console.error('analysis error:', err);
       analyzeBtn.disabled = false;
       analyzeBtn.innerHTML = 'analyze document';
-      alert('failed to connect to server.');
+      
+      // Fallback UI rendering if network fails completely
+      resultsSection.style.display = 'block';
+      statusBanner.className = 'status-banner illegal';
+      statusBanner.innerHTML = '⚠️ API rate limit or network error: Live AI analysis unavailable. Please consult verified Santa Cruz legal aid resources below.';
+      disputeLetterBox.textContent = 'ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.';
     });
   });
 
@@ -179,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const item = document.createElement('div');
       item.className = 'timeline-item';
       
-      let iconClass = step.type.includes('tool') ? 'step-icon tool' : 'step-icon';
+      let iconClass = step.type && step.type.includes('tool') ? 'step-icon tool' : 'step-icon';
 
       let bodyHtml = `<p>${step.content || ''}</p>`;
       if (step.tool_args) {
@@ -203,7 +206,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderAnalysisResults(data) {
     resultsSection.style.display = 'block';
 
-    if (data.is_illegal) {
+    if (data.status === 'error') {
+      statusBanner.className = 'status-banner illegal';
+      statusBanner.innerHTML = `⚠️ ${data.message || 'API rate limit reached. Live AI analysis is currently unavailable.'}`;
+    } else if (data.is_illegal) {
       statusBanner.className = 'status-banner illegal';
       statusBanner.innerHTML = `⚠️ statutory violation detected: identified ${data.violations_count} unlawful terms under Santa Cruz Municipal Code or California law.`;
     } else {
@@ -212,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     violationsList.innerHTML = '';
-    data.violations.forEach(v => {
+    (data.violations || []).forEach(v => {
       const div = document.createElement('div');
       div.className = 'violation-card';
       div.textContent = v;
@@ -220,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     recommendationsList.innerHTML = '';
-    data.recommendations.forEach(r => {
+    (data.recommendations || []).forEach(r => {
       const div = document.createElement('div');
       div.className = 'recommendation-card';
       div.textContent = r;
@@ -239,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
       legalAidList.appendChild(div);
     });
 
-    disputeLetterBox.textContent = data.dispute_letter;
+    disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
     resultsSection.scrollIntoView({ behavior: 'smooth' });
   }
 

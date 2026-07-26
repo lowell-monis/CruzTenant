@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     tenantNameInput.value = c.tenant_name || 'Alex Rivera';
-    landlordNameInput.value = c.landlord_name || 'Pacific Vista Management';
+    landlordNameInput.value = c.landlord_name || 'Bayshore Coastal Rental Mgmt';
     inputTextarea.value = c.input_text;
     
     if (c.id === 'case_1') {
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify({
         text: text,
         tenant_name: tenantNameInput.value || 'Jane Doe',
-        landlord_name: landlordNameInput.value || 'Property Mgmt Co'
+        landlord_name: landlordNameInput.value || 'Bayshore Coastal Rental Mgmt'
       })
     })
     .then(res => res.json())

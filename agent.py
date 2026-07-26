@@ -5,6 +5,7 @@ Gemma 4 agent tool engine for Santa Cruz tenant protection analysis.
 import json
 import os
 import re
+import datetime
 from typing import Dict, Any, List, Optional
 import santa_cruz_legal_db as sc_db
 
@@ -192,21 +193,29 @@ class GemmaAgentEngine:
 
     def generate_custom_letter_with_gemma(self, tenant_name: str, landlord_name: str, tenant_text: str, violations: List[str], tool_results_summary: Dict[str, Any]) -> str:
         """generates a customized formal legal dispute letter tailored to the exact scenario."""
-        today_str = sc_db.datetime.date.today().strftime("%B %d, %Y")
+        today_str = datetime.date.today().strftime("%B %d, %Y")
         
         # Build scenario specific details
         specific_claims = []
         for v in violations:
-            specific_claims.append(f"• STATUTORY VIOLATION: {v}")
+            specific_claims.append(f"  * STATUTORY VIOLATION: {v}")
             
-        claims_block = "\n".join(specific_claims) if specific_claims else "• NOTICE: Tenant requests written verification of current lease compliance under Santa Cruz Municipal Code."
+        claims_block = "\n".join(specific_claims) if specific_claims else "  * NOTICE: Tenant requests written verification of current lease compliance under Santa Cruz Municipal Code."
+
+        # Excerpt of tenant's submitted document text
+        clean_excerpt = tenant_text.strip().replace("\n", " ")
+        if len(clean_excerpt) > 180:
+            clean_excerpt = clean_excerpt[:180] + "..."
 
         # Custom tailored dispute letter
         dispute_letter = f"""FORMAL TENANT DISPUTE & NOTICE OF MUNICIPAL CODE VIOLATION
 Date: {today_str}
 To Landlord / Property Management: {landlord_name}
 From Tenant: {tenant_name}
-Property Address: Santa Cruz, CA
+Property Jurisdiction: Santa Cruz County, CA
+
+SUBMITTED NOTICE EXCERPT CONTESTED:
+"{clean_excerpt}"
 
 RE: FORMAL CONTESTATION OF UNLAWFUL NOTICE / LEASE TERMS
 
@@ -214,7 +223,7 @@ Dear {landlord_name},
 
 I am writing to formally contest the recent written notice / lease terms issued for my rental unit in Santa Cruz, CA. 
 
-Following a statutory audit conducted via CruzTenant under Santa Cruz Municipal Code and California Housing Statutes, the following specific violations were identified regarding my tenancy:
+Following a statutory audit conducted via CruzTenant using Gemma 4 function tools against Santa Cruz Municipal Code and California Housing Statutes, the following specific violations were identified regarding my tenancy:
 
 {claims_block}
 

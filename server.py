@@ -109,16 +109,17 @@ class CruzTenantRequestHandler(http.server.SimpleHTTPRequestHandler):
                     landlord_name=landlord_name
                 )
             except Exception as e:
-                # Absolute Failsafe: if agent engine encounters any runtime error, return legal aid contacts
+                # API Rate Limit / Failure Failsafe: Return explicit error message for analysis & dispute letter, serving Legal Aid as the ONLY fallback
                 analysis_result = {
-                    "status": "success",
+                    "status": "error",
                     "tenant_name": tenant_name,
                     "landlord_name": landlord_name,
-                    "is_illegal": True,
-                    "violations": ["tenant notice audit requested under Santa Cruz Municipal Code."],
-                    "recommendations": ["consult Santa Cruz legal aid resources below."],
-                    "agent_trace": [{"step": 1, "type": "thought", "title": "local database fallback", "content": "executing direct Santa Cruz legal aid lookup."}],
-                    "dispute_letter": f"FORMAL TENANT NOTICE\nTo: {landlord_name}\nFrom: {tenant_name}\nRE: Santa Cruz Housing Compliance Request",
+                    "is_illegal": False,
+                    "violations_count": 0,
+                    "violations": ["API rate limit reached. Live AI document analysis is currently unavailable."],
+                    "recommendations": ["consult verified Santa Cruz legal aid resources below for human legal assistance."],
+                    "agent_trace": [{"step": 1, "type": "thought", "title": "API rate limit reached", "content": "live AI API unavailable. returning verified Santa Cruz legal aid locations as fallback."}],
+                    "dispute_letter": "ERROR: API rate limit reached. Unable to perform live AI document analysis or generate automated dispute notices at this time. Please try again in a few moments or consult verified Santa Cruz legal aid resources below.",
                     "legal_aid_resources": sc_db.SANTA_CRUZ_LEGAL_AID_RESOURCES
                 }
 

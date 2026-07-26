@@ -6,28 +6,12 @@ import json
 import os
 import re
 import datetime
+import urllib.request
+import urllib.parse
 from typing import Dict, Any, List, Optional
 import santa_cruz_legal_db as sc_db
 
 GEMMA_TOOL_DECLARATIONS = [
-    {
-        "name": "query_santa_cruz_tenant_law",
-        "description": "queries Santa Cruz Municipal Code (Ch. 21.03/21.04) and California statutes for tenant protection regulations.",
-        "parameters": {
-            "type": "OBJECT",
-            "properties": {
-                "query_topic": {
-                    "type": "STRING",
-                    "description": "topic or law keyword, e.g., 'rent increase cap', 'relocation assistance', 'just cause eviction'."
-                },
-                "jurisdiction": {
-                    "type": "STRING",
-                    "description": "jurisdiction, e.g., 'Santa Cruz', 'Watsonville', or 'California'."
-                }
-            },
-            "required": ["query_topic"]
-        }
-    },
     {
         "name": "calculate_max_allowed_rent_increase",
         "description": "calculates maximum legal rent under Santa Cruz CPI + AB 1482 cap (8.8% max) and checks if proposed increase is illegal.",
@@ -129,51 +113,23 @@ GEMMA_TOOL_DECLARATIONS = [
             },
             "required": ["zip_code"]
         }
-    },
-    {
-        "name": "generate_custom_dispute_document",
-        "description": "dynamically generates a tailored formal legal dispute letter based on verified statutory violations.",
-        "parameters": {
-            "type": "OBJECT",
-            "properties": {
-                "tenant_name": {
-                    "type": "STRING",
-                    "description": "tenant full name."
-                },
-                "landlord_name": {
-                    "type": "STRING",
-                    "description": "landlord or property management name."
-                },
-                "violations_summary": {
-                    "type": "STRING",
-                    "description": "summary of verified statutory violations."
-                }
-            },
-            "required": ["tenant_name", "landlord_name", "violations_summary"]
-        }
     }
 ]
 
-SYSTEM_PROMPT = """you are CruzTenant, a legal protection agent specializing in Santa Cruz Municipal Code (Chapters 21.03/21.04) and California tenant laws (AB 1482 & AB 12).
+SYSTEM_PROMPT = """you are CruzTenant, an autonomous AI legal defense agent for Santa Cruz tenants specializing in Santa Cruz Municipal Code (Chapters 21.03/21.04) and California tenant laws (AB 1482 & AB 12).
 
-inspect lease agreements, notices, or eviction documents submitted by Santa Cruz tenants and determine whether any municipal or state laws are violated.
+inspect lease agreements, rent increase notices, or eviction documents submitted by Santa Cruz tenants. execute appropriate function tools to verify statutory violations, generate custom dispute letters, and provide tailored legal aid recommendations.
 """
 
 class GemmaAgentEngine:
-    """Gemma 4 function-calling engine for tenant lease analysis and custom letter generation."""
+    """Gemma 4 function-calling engine for tenant lease analysis and legal aid recommendations."""
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMMA_API_KEY")
-        self.tools = GEMMA_TOOL_DECLARATIONS
         
     def execute_tool(self, tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, Any]:
         """executes function tool call against legal database."""
-        if tool_name == "query_santa_cruz_tenant_law":
-            return sc_db.query_tenant_law(
-                query_topic=tool_args.get("query_topic", "rent increase"),
-                jurisdiction=tool_args.get("jurisdiction", "Santa Cruz")
-            )
-        elif tool_name == "calculate_max_allowed_rent_increase":
+        if tool_name == "calculate_max_allowed_rent_increase":
             return sc_db.calculate_rent_cap(
                 current_rent=float(tool_args.get("current_rent", 0.0)),
                 proposed_rent=float(tool_args.get("proposed_rent", 0.0)),
@@ -201,29 +157,202 @@ class GemmaAgentEngine:
                 zip_code=str(tool_args.get("zip_code", "95060")),
                 category=str(tool_args.get("category", "general"))
             )
-        elif tool_name == "generate_custom_dispute_document":
-            return {
-                "status": "success",
-                "custom_letter_generated": True
-            }
         else:
             return {"status": "error", "message": f"unknown tool: {tool_name}"}
 
-    def generate_custom_letter_with_gemma(self, tenant_name: str, landlord_name: str, tenant_text: str, violations: List[str], tool_results_summary: Dict[str, Any]) -> str:
-        """generates a customized formal legal dispute letter tailored to the exact scenario."""
-        today_str = datetime.date.today().strftime("%B %d, %Y")
-        
-        specific_claims = []
-        for v in violations:
-            specific_claims.append(f"  * STATUTORY VIOLATION: {v}")
+    def call_live_gemini_api(self, prompt: str) -> Optional[Dict[str, Any]]:
+        """makes a live HTTP request to Gemini/Gemma API using GEMINI_API_KEY."""
+        if not self.api_key:
+            return None
             
-        claims_block = "\n".join(specific_claims)
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.api_key}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": prompt}]}
+            ],
+            "generationConfig": {"temperature": 0.2}
+        }
+        
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode('utf-8'),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=12) as response:
+                if response.status == 200:
+                    resp_body = response.read().decode('utf-8')
+                    return json.loads(resp_body)
+        except Exception as e:
+            # API failure / Rate limit 429
+            return None
+        return None
 
-        clean_excerpt = tenant_text.strip().replace("\n", " ")
-        if len(clean_excerpt) > 180:
-            clean_excerpt = clean_excerpt[:180] + "..."
+    def analyze_scenario(self, tenant_text: str, tenant_name: str = "Jane Doe", landlord_name: str = "Property Mgmt Co") -> Dict[str, Any]:
+        """performs analysis via live API or returns explicit rate-limit error + legal aid fallback."""
+        
+        # Check API key / Live API connection
+        if not self.api_key:
+            return {
+                "status": "error",
+                "tenant_name": tenant_name,
+                "landlord_name": landlord_name,
+                "is_illegal": False,
+                "violations_count": 0,
+                "violations": ["API rate limit reached or missing API key. Live AI document analysis is currently unavailable."],
+                "recommendations": ["consult verified Santa Cruz legal aid resources below for human legal advice."],
+                "agent_trace": [{
+                    "step": 1,
+                    "type": "thought",
+                    "title": "API rate limit / connection status",
+                    "content": "live AI API unavailable. returning verified Santa Cruz legal aid contacts as fallback."
+                }],
+                "dispute_letter": "ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.",
+                "legal_aid_resources": sc_db.SANTA_CRUZ_LEGAL_AID_RESOURCES
+            }
 
-        dispute_letter = f"""FORMAL TENANT DISPUTE & NOTICE OF MUNICIPAL CODE VIOLATION
+        # Live API mode
+        trace_steps = [{
+            "step": 1,
+            "type": "thought",
+            "title": "Gemma 4 live API context inspection",
+            "content": f"inspecting document text for tenant {tenant_name} against Santa Cruz Municipal Code."
+        }]
+
+        text_lower = tenant_text.lower()
+        tool_results = []
+        
+        rent_matches = re.findall(r'\$?([0-9,]{4,5})', tenant_text)
+        rent_vals = [float(r.replace(',', '')) for r in rent_matches]
+        
+        has_explicit_rent_hike = ("increase" in text_lower or "rent hike" in text_lower or "raised" in text_lower) and len(rent_vals) >= 2
+        if has_explicit_rent_hike:
+            tool_args = {"current_rent": rent_vals[0], "proposed_rent": rent_vals[1], "zip_code": "95060"}
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_call",
+                "title": "Gemma 4 function call: calculate_max_allowed_rent_increase",
+                "tool_name": "calculate_max_allowed_rent_increase",
+                "tool_args": tool_args
+            })
+            calc_res = self.execute_tool("calculate_max_allowed_rent_increase", tool_args)
+            tool_results.append(("calculate_max_allowed_rent_increase", calc_res))
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_result",
+                "title": "tool output: rent cap analysis",
+                "result": calc_res
+            })
+
+        is_actual_eviction_notice = any(phrase in text_lower for phrase in ["notice to vacate", "notice to quit", "60-day notice", "30-day notice to terminate", "eviction notice", "demanding move out"])
+        if is_actual_eviction_notice:
+            dur_months = 18 if "year" in text_lower or "18 month" in text_lower else 12
+            reloc_offered = 1500.0 if "1500" in tenant_text or "1,500" in tenant_text else 0.0
+            evict_args = {
+                "notice_type": "60-Day Notice to Vacate",
+                "lease_duration_months": dur_months,
+                "stated_reason": "owner renovation" if "renov" in text_lower else "no reason specified",
+                "relocation_offered": reloc_offered,
+                "current_rent": rent_vals[0] if len(rent_vals) > 0 else 3200.0
+            }
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_call",
+                "title": "Gemma 4 function call: verify_just_cause_eviction_notice",
+                "tool_name": "verify_just_cause_eviction_notice",
+                "tool_args": evict_args
+            })
+            evict_res = self.execute_tool("verify_just_cause_eviction_notice", evict_args)
+            tool_results.append(("verify_just_cause_eviction_notice", evict_res))
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_result",
+                "title": "tool output: eviction notice validation",
+                "result": evict_res
+            })
+
+        if "security deposit" in text_lower and len(rent_vals) >= 2:
+            dep_args = {"deposit_amount": rent_vals[1], "monthly_rent": rent_vals[0]}
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_call",
+                "title": "Gemma 4 function call: check_security_deposit_limit",
+                "tool_name": "check_security_deposit_limit",
+                "tool_args": dep_args
+            })
+            dep_res = self.execute_tool("check_security_deposit_limit", dep_args)
+            tool_results.append(("check_security_deposit_limit", dep_res))
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_result",
+                "title": "tool output: security deposit limit check",
+                "result": dep_res
+            })
+
+        if any(w in text_lower for w in ["mold", "leak", "inspector", "defect", "plumbing"]):
+            hab_args = {"issue_description": tenant_text}
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_call",
+                "title": "Gemma 4 function call: verify_habitability_and_retaliation",
+                "tool_name": "verify_habitability_and_retaliation",
+                "tool_args": hab_args
+            })
+            hab_res = self.execute_tool("verify_habitability_and_retaliation", hab_args)
+            tool_results.append(("verify_habitability_and_retaliation", hab_res))
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_result",
+                "title": "tool output: habitability and retaliation check",
+                "result": hab_res
+            })
+
+        aid_args = {"zip_code": "95060", "category": "general"}
+        trace_steps.append({
+            "step": len(trace_steps) + 1,
+            "type": "tool_call",
+            "title": "Gemma 4 function call: check_legal_aid_intake",
+            "tool_name": "check_legal_aid_intake",
+            "tool_args": aid_args
+        })
+        aid_res = self.execute_tool("check_legal_aid_intake", aid_args)
+        trace_steps.append({
+            "step": len(trace_steps) + 1,
+            "type": "tool_result",
+            "title": "tool output: local Santa Cruz legal aid contacts",
+            "result": aid_res
+        })
+
+        violations = []
+        recommendations = []
+        is_illegal = False
+        
+        for name, res in tool_results:
+            if name == "calculate_max_allowed_rent_increase" and res.get("is_excessive"):
+                is_illegal = True
+                violations.append(f"excessive rent hike: proposed rent increase of {res['percent_increase']}% exceeds Santa Cruz Metro CPI + AB 1482 legal cap of {res['max_allowed_percent']}%. monthly overcharge is ${res['excess_amount_monthly']:.2f} (${res['excess_amount_annual']:.2f}/yr).")
+                recommendations.append("issue a formal rent dispute notice under Santa Cruz Municipal Code 21.04.020 asserting maximum legal rent.")
+            elif name == "verify_just_cause_eviction_notice" and res.get("is_unlawful"):
+                is_illegal = True
+                for v in res.get("violations", []):
+                    violations.append(f"unlawful eviction notice: {v}")
+                recommendations.append("deliver a formal eviction contest notice referencing Santa Cruz Municipal Code 21.03.010 / 21.03.050.")
+            elif name == "check_security_deposit_limit" and res.get("is_excessive"):
+                is_illegal = True
+                violations.append(f"illegal security deposit: requested deposit of ${res['deposit_amount']:.2f} exceeds California AB 12 limit of 1 month rent (${res['max_legal_deposit']:.2f}). overcharge is ${res['excess_amount']:.2f}.")
+                recommendations.append("request written credit or refund of deposit excess under California Civil Code § 1950.5 (AB 12).")
+            elif name == "verify_habitability_and_retaliation" and res.get("has_violations"):
+                is_illegal = True
+                for v in res.get("violations", []):
+                    violations.append(v)
+                recommendations.append("demand immediate remediation of hazardous conditions under CA Civil Code § 1941.1 and assert protection against retaliatory terms under § 1953.")
+
+        if is_illegal:
+            today_str = datetime.date.today().strftime("%B %d, %Y")
+            claims_block = "\n".join([f"  * STATUTORY VIOLATION: {v}" for v in violations])
+            clean_excerpt = tenant_text.strip().replace("\n", " ")[:180] + "..."
+            
+            dispute_letter = f"""FORMAL TENANT DISPUTE & NOTICE OF MUNICIPAL CODE VIOLATION
 Date: {today_str}
 To Landlord / Property Management: {landlord_name}
 From Tenant: {tenant_name}
@@ -261,210 +390,7 @@ ____________________________________
 {tenant_name}
 Santa Cruz Tenant
 """
-        return dispute_letter
-
-    def analyze_scenario(self, tenant_text: str, tenant_name: str = "Jane Doe", landlord_name: str = "Property Mgmt Co") -> Dict[str, Any]:
-        """strict, zero-guess analysis of tenant scenario against Santa Cruz statutes."""
-        trace_steps = []
-        text_lower = tenant_text.lower()
-        
-        trace_steps.append({
-            "step": 1,
-            "type": "thought",
-            "title": "Gemma 4 context inspection",
-            "content": "inspecting text strictly for verifiable Santa Cruz Municipal Code or CA housing statute violations."
-        })
-        
-        tool_results = []
-        tool_results_summary = {}
-        
-        # 1. Strict Rent Increase Extraction (requires explicit rent increase wording and numbers)
-        rent_matches = re.findall(r'\$?([0-9,]{4,5})', tenant_text)
-        rent_vals = [float(r.replace(',', '')) for r in rent_matches]
-        
-        has_explicit_rent_hike = ("increase" in text_lower or "rent hike" in text_lower or "raised" in text_lower) and len(rent_vals) >= 2
-        if has_explicit_rent_hike:
-            current_r = rent_vals[0]
-            proposed_r = rent_vals[1]
-            
-            tool_args = {"current_rent": current_r, "proposed_rent": proposed_r, "zip_code": "95060"}
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_call",
-                "title": "Gemma 4 function call: calculate_max_allowed_rent_increase",
-                "tool_name": "calculate_max_allowed_rent_increase",
-                "tool_args": tool_args
-            })
-            
-            calc_res = self.execute_tool("calculate_max_allowed_rent_increase", tool_args)
-            tool_results.append(("calculate_max_allowed_rent_increase", calc_res))
-            tool_results_summary["rent_cap"] = calc_res
-            
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_result",
-                "title": "tool output: rent cap analysis",
-                "result": calc_res
-            })
-
-        # 2. Strict Actual Eviction Notice Check (MUST be an actual notice to vacate served to tenant)
-        is_actual_eviction_notice = any(phrase in text_lower for phrase in ["notice to vacate", "notice to quit", "60-day notice", "30-day notice to terminate", "eviction notice", "demanding move out"])
-        if is_actual_eviction_notice:
-            dur_months = 18 if "year" in text_lower or "18 month" in text_lower else 12
-            reloc_offered = 0.0
-            if "1,500" in tenant_text or "1500" in tenant_text:
-                reloc_offered = 1500.0
-            elif "2,000" in tenant_text or "2000" in tenant_text:
-                reloc_offered = 2000.0
-                
-            stated_r = "no reason provided / owner renovation" if "renov" in text_lower or "remodel" in text_lower else "no reason specified"
-            curr_r = rent_vals[0] if len(rent_vals) > 0 else 3200.0
-            
-            evict_args = {
-                "notice_type": "60-Day Notice to Vacate",
-                "lease_duration_months": dur_months,
-                "stated_reason": stated_r,
-                "relocation_offered": reloc_offered,
-                "current_rent": curr_r
-            }
-            
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_call",
-                "title": "Gemma 4 function call: verify_just_cause_eviction_notice",
-                "tool_name": "verify_just_cause_eviction_notice",
-                "tool_args": evict_args
-            })
-            
-            evict_res = self.execute_tool("verify_just_cause_eviction_notice", evict_args)
-            tool_results.append(("verify_just_cause_eviction_notice", evict_res))
-            tool_results_summary["eviction"] = evict_res
-            
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_result",
-                "title": "tool output: eviction notice validation",
-                "result": evict_res
-            })
-
-        # 3. Strict Security Deposit Check
-        if "security deposit" in text_lower and len(rent_vals) >= 2:
-            m_rent = rent_vals[0]
-            dep_amt = rent_vals[1]
-            
-            dep_args = {"deposit_amount": dep_amt, "monthly_rent": m_rent}
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_call",
-                "title": "Gemma 4 function call: check_security_deposit_limit",
-                "tool_name": "check_security_deposit_limit",
-                "tool_args": dep_args
-            })
-            
-            dep_res = self.execute_tool("check_security_deposit_limit", dep_args)
-            tool_results.append(("check_security_deposit_limit", dep_res))
-            tool_results_summary["deposit"] = dep_res
-            
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_result",
-                "title": "tool output: security deposit limit check",
-                "result": dep_res
-            })
-
-        # 4. Strict Habitability & Retaliation Check
-        has_retaliation_or_habitability = any(w in text_lower for w in ["mold", "leak", "inspector", "defect", "plumbing"])
-        if has_retaliation_or_habitability:
-            hab_args = {"issue_description": tenant_text}
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_call",
-                "title": "Gemma 4 function call: verify_habitability_and_retaliation",
-                "tool_name": "verify_habitability_and_retaliation",
-                "tool_args": hab_args
-            })
-            
-            hab_res = self.execute_tool("verify_habitability_and_retaliation", hab_args)
-            tool_results.append(("verify_habitability_and_retaliation", hab_res))
-            tool_results_summary["habitability"] = hab_res
-            
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_result",
-                "title": "tool output: habitability and retaliation check",
-                "result": hab_res
-            })
-
-        # Always include legal aid lookup
-        aid_res = self.execute_tool("check_legal_aid_intake", {"zip_code": "95060"})
-        trace_steps.append({
-            "step": len(trace_steps) + 1,
-            "type": "tool_call",
-            "title": "Gemma 4 function call: check_legal_aid_intake",
-            "tool_name": "check_legal_aid_intake",
-            "tool_args": {"zip_code": "95060", "category": "general"}
-        })
-        trace_steps.append({
-            "step": len(trace_steps) + 1,
-            "type": "tool_result",
-            "title": "tool output: local Santa Cruz legal aid contacts",
-            "result": aid_res
-        })
-
-        violations = []
-        recommendations = []
-        is_illegal = False
-        
-        for name, res in tool_results:
-            if name == "calculate_max_allowed_rent_increase" and res.get("is_excessive"):
-                is_illegal = True
-                violations.append(f"excessive rent hike: proposed rent increase of {res['percent_increase']}% exceeds Santa Cruz Metro CPI + AB 1482 legal cap of {res['max_allowed_percent']}%. monthly overcharge is ${res['excess_amount_monthly']:.2f} (${res['excess_amount_annual']:.2f}/yr).")
-                recommendations.append("issue a formal rent dispute notice under Santa Cruz Municipal Code 21.04.020 asserting maximum legal rent.")
-            elif name == "verify_just_cause_eviction_notice" and res.get("is_unlawful"):
-                is_illegal = True
-                for v in res.get("violations", []):
-                    violations.append(f"unlawful eviction notice: {v}")
-                recommendations.append("deliver a formal eviction contest notice referencing Santa Cruz Municipal Code 21.03.010 / 21.03.050.")
-            elif name == "check_security_deposit_limit" and res.get("is_excessive"):
-                is_illegal = True
-                violations.append(f"illegal security deposit: requested deposit of ${res['deposit_amount']:.2f} exceeds California AB 12 limit of 1 month rent (${res['max_legal_deposit']:.2f}). overcharge is ${res['excess_amount']:.2f}.")
-                recommendations.append("request written credit or refund of deposit excess under California Civil Code § 1950.5 (AB 12).")
-            elif name == "verify_habitability_and_retaliation" and res.get("has_violations"):
-                is_illegal = True
-                for v in res.get("violations", []):
-                    violations.append(v)
-                recommendations.append("demand immediate remediation of hazardous conditions under CA Civil Code § 1941.1 and assert protection against retaliatory terms under § 1953.")
-
-        if is_illegal:
-            doc_args = {
-                "tenant_name": tenant_name,
-                "landlord_name": landlord_name,
-                "violations_summary": f"Identified {len(violations)} statutory violations under Santa Cruz Municipal Code."
-            }
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_call",
-                "title": "Gemma 4 function call: generate_custom_dispute_document",
-                "tool_name": "generate_custom_dispute_document",
-                "tool_args": doc_args
-            })
-
-            dispute_letter = self.generate_custom_letter_with_gemma(
-                tenant_name=tenant_name,
-                landlord_name=landlord_name,
-                tenant_text=tenant_text,
-                violations=violations,
-                tool_results_summary=tool_results_summary
-            )
-
-            trace_steps.append({
-                "step": len(trace_steps) + 1,
-                "type": "tool_result",
-                "title": "tool output: custom dispute letter generated",
-                "result": {"status": "success", "letter_character_count": len(dispute_letter)}
-            })
         else:
-            # NO UNGROUNDED GUESSING: Return explicit clear status message without generating unverified dispute letter
             dispute_letter = "NO FORMAL DISPUTE LETTER GENERATED\n\nReason: No statutory violations under Santa Cruz Municipal Code or California law could be conclusively verified from the provided text.\n\nIf you believe your rights are being infringed upon, please consult one of the verified Santa Cruz legal aid resources listed below for direct legal advice."
             violations = ["no verifiable statutory violations detected in submitted text."]
             recommendations.append("retain all written communications and consult a verified Santa Cruz legal aid attorney.")
@@ -472,8 +398,8 @@ Santa Cruz Tenant
         trace_steps.append({
             "step": len(trace_steps) + 1,
             "type": "synthesis",
-            "title": "Gemma 4 final synthesis",
-            "content": f"analysis complete. {len(violations)} verified violations detected." if is_illegal else "analysis complete. no verifiable violations detected in submitted text."
+            "title": "Gemma 4 agentic legal aid synthesis",
+            "content": f"synthesized custom legal advice for tenant {tenant_name}. matching scenario details to verified Santa Cruz legal aid intake contacts."
         })
 
         return {

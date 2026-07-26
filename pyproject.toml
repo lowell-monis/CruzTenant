@@ -1,0 +1,11 @@
+[project]
+name = "cruztenant"
+version = "1.0.0"
+description = "Autonomous Santa Cruz Tenant Rights & Lease Auditor powered by Gemma 4"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

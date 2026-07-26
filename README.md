@@ -3,6 +3,8 @@
 **Built for CruzHacks: Build with Gemma: Cruz Into The Gemmaverse!**  
 **Track:** Track 1 — Autonomous Agent Track  
 **Developer:** Lowell Monis  
+**Project Repository:** [https://github.com/lowell-monis/CruzTenant](https://github.com/lowell-monis/CruzTenant)  
+**Live Demo:** [https://lowell-monis.github.io/CruzTenant](https://lowell-monis.github.io/CruzTenant)  
 
 ---
 
@@ -16,7 +18,7 @@ In Santa Cruz County, renters face one of the highest cost-of-living burdens in 
 ## 🛠️ Key Agentic Features & Architecture
 
 ### 1. Gemma 4 Native Function-Calling Engine
-CruzTenant uses structured function tool declarations to execute deterministic legal audits against the Santa Cruz Municipal Code database:
+CruzTenant uses 6 structured function tool declarations to execute deterministic legal audits against the Santa Cruz Municipal Code database:
 - `calculate_max_allowed_rent_increase`: Enforces the 8.8% annual cap (5.0% base + 3.8% Santa Cruz Metro CPI) under SC Municipal Code Ch. 21.04 and California AB 1482.
 - `verify_just_cause_eviction_notice`: Audits notices to vacate under SC Municipal Code Ch. 21.03 for mandatory just cause reasons and statutory relocation assistance ($3,000 / 2 months rent minimum).
 - `check_security_deposit_limit`: Validates security deposits against California AB 12 (1.0x monthly rent limit effective July 2024).
@@ -33,17 +35,26 @@ When an audit is performed, CruzTenant matches the tenant's specific situation t
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Environment Setup & Deployment
 
-### Prerequisites
-- Python 3.9+
-- A web browser
-
-### Running Locally
+### Running with `uv` (Recommended)
 1. Clone the repository:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/cruzhacks-cruztenant.git
-   cd cruzhacks-cruztenant
+   git clone https://github.com/lowell-monis/CruzTenant.git
+   cd CruzTenant
+   ```
+2. Create virtual environment and run with `uv`:
+   ```bash
+   uv venv
+   uv run python server.py
+   ```
+3. Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+
+### Standard Python Setup (Local Fallback)
+1. Install Python 3.9+:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 2. Create a `.env` file in the project root:
    ```env
@@ -53,9 +64,11 @@ When an audit is performed, CruzTenant matches the tenant's specific situation t
    ```bash
    python server.py
    ```
-4. Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+4. Open **[http://localhost:8000](http://localhost:8000)**.
 
 ---
 
-## ⚖️ Legal Disclaimer
+## ⚖️ Legal Disclaimer & Trademark Attribution
 > **LEGAL DISCLAIMER:** CruzTenant is an automated AI educational tool built by Lowell Monis for CruzHacks and powered by Gemma 4. It is not a substitute for formal legal representation or advice. For official legal counsel or litigation defense, please consult a licensed attorney or a verified Santa Cruz legal aid organization listed in the application.
+
+*Gemma is a trademark of Google LLC.*

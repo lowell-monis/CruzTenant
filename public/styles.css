@@ -324,9 +324,16 @@ h1, h2, h3, h4, h5, .brand-title, .hero-title {
   align-items: flex-start;
 }
 
-.overview-icon {
-  font-size: 1.5rem;
-  line-height: 1;
+.overview-icon-box {
+  background: rgba(217, 119, 6, 0.12);
+  border: 1px solid var(--legal-gold);
+  color: var(--legal-gold-bright);
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .overview-card h4 {

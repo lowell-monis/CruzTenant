@@ -36,20 +36,23 @@ When an audit is performed, CruzTenant matches the tenant's specific situation t
 
 ---
 
-## 🚀 Environment Setup & Deployment
+## 🚀 Environment Setup & Local Execution
 
-### Running with `uv` (Recommended)
+### Running with `uv` (Synced & Lockfile Ready)
 1. Clone the repository:
    ```bash
    git clone https://github.com/lowell-monis/CruzTenant.git
    cd CruzTenant
    ```
-2. Create virtual environment and run with `uv`:
+2. Sync virtual environment using `uv`:
    ```bash
-   uv venv
+   uv sync
+   ```
+3. Run the application:
+   ```bash
    uv run python server.py
    ```
-3. Open **[http://localhost:8000](http://localhost:8000)** in your browser.
+4. Open **[http://localhost:8000](http://localhost:8000)** in your browser.
 
 ### Standard Python Setup (Local Fallback)
 1. Install Python 3.9+:
@@ -66,6 +69,23 @@ When an audit is performed, CruzTenant matches the tenant's specific situation t
    python server.py
    ```
 4. Open **[http://localhost:8000](http://localhost:8000)**.
+
+---
+
+## 🌐 GitHub Deployment Instructions
+
+### 1. Push to GitHub
+Initialize and push your local repository to your GitHub account:
+```bash
+git remote add origin https://github.com/lowell-monis/CruzTenant.git
+git branch -M main
+git push -u origin main
+```
+
+### 2. Enable GitHub Pages Deployment
+1. Go to your repository settings on GitHub: **Settings > Pages**.
+2. Under **Build and deployment > Source**, select **GitHub Actions**.
+3. The included GitHub Actions workflow (`.github/workflows/deploy.yml`) will automatically deploy the static frontend to **`https://lowell-monis.github.io/CruzTenant`** on every push to `main`!
 
 ---
 

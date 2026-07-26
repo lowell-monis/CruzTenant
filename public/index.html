@@ -226,18 +226,19 @@
 
     </div>
 
-    <!-- execution trace -->
-    <div class="panel card glass-panel agent-trace-panel" id="agentTraceSection" style="display: none;">
-      <div class="panel-header">
+    <!-- execution trace (collapsible dropdown) -->
+    <details class="panel card glass-panel agent-trace-panel" id="agentTraceSection" style="display: none;">
+      <summary class="panel-header trace-summary">
         <div class="panel-title-wrap">
           <div class="pulse-indicator"></div>
           <h3>function execution trace</h3>
+          <span class="badge badge-success" id="agentStatusBadge">5 trace steps</span>
         </div>
-        <span class="badge badge-success" id="agentStatusBadge">5 tools executed</span>
-      </div>
+        <span class="trace-toggle-btn">view reasoning trace ▾</span>
+      </summary>
 
       <div class="timeline-container" id="timelineContainer"></div>
-    </div>
+    </details>
 
     <!-- results -->
     <div class="panel card glass-panel results-panel" id="resultsSection" style="display: none;">

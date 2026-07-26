@@ -205,6 +205,27 @@ def check_security_deposit(deposit_amount: float, monthly_rent: float) -> Dict[s
         "recommendation": "request landlord issue a written credit or refund for deposit amount exceeding 1 month rent."
     }
 
+def check_habitability_and_retaliation(issue_description: str) -> Dict[str, Any]:
+    """checks for retaliatory lease clauses and severe habitability violations under CA Civil Code § 1942.5 & § 1953."""
+    desc_lower = issue_description.lower()
+    violations = []
+    
+    is_retaliatory_clause = any(w in desc_lower for w in ["inspector", "report", "city code", "defect", "consent"]) and any(w in desc_lower for w in ["terminate", "breach", "evict", "prohibit"])
+    is_habitability_issue = any(w in desc_lower for w in ["mold", "leak", "plumbing", "water", "heat", "rodent", "substandard"])
+    
+    if is_retaliatory_clause:
+        violations.append("unlawful retaliatory lease clause: lease terms prohibiting tenants from reporting building defects to Santa Cruz City Inspectors are void and unenforceable under CA Civil Code § 1953.")
+        
+    if is_habitability_issue:
+        violations.append("severe habitability breach: failure to remediate hazardous conditions (mold/plumbing leaks) violates the Implied Warranty of Habitability under CA Civil Code § 1941.1.")
+        
+    return {
+        "status": "success",
+        "has_violations": len(violations) > 0,
+        "violations": violations,
+        "governing_codes": ["California Civil Code § 1941.1", "California Civil Code § 1942.5", "California Civil Code § 1953"]
+    }
+
 def get_legal_aid_contacts(zip_code: str = "95060", category: str = "general") -> Dict[str, Any]:
     """retrieves Santa Cruz County legal aid intake contacts."""
     return {

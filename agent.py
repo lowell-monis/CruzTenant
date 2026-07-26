@@ -99,6 +99,20 @@ GEMMA_TOOL_DECLARATIONS = [
         }
     },
     {
+        "name": "verify_habitability_and_retaliation",
+        "description": "evaluates retaliatory lease clauses and severe habitability breaches under CA Civil Code § 1941.1 & § 1953.",
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "issue_description": {
+                    "type": "STRING",
+                    "description": "description of habitability or reporting issue."
+                }
+            },
+            "required": ["issue_description"]
+        }
+    },
+    {
         "name": "check_legal_aid_intake",
         "description": "retrieves legal aid contacts and clinics in Santa Cruz County.",
         "parameters": {
@@ -178,6 +192,10 @@ class GemmaAgentEngine:
                 deposit_amount=float(tool_args.get("deposit_amount", 0.0)),
                 monthly_rent=float(tool_args.get("monthly_rent", 0.0))
             )
+        elif tool_name == "verify_habitability_and_retaliation":
+            return sc_db.check_habitability_and_retaliation(
+                issue_description=str(tool_args.get("issue_description", ""))
+            )
         elif tool_name == "check_legal_aid_intake":
             return sc_db.get_legal_aid_contacts(
                 zip_code=str(tool_args.get("zip_code", "95060")),
@@ -232,10 +250,11 @@ GOVERNING MUNICIPAL ORDINANCES & STATE LAWS:
 2. Santa Cruz Municipal Code Chapter 21.03 (Just Cause Eviction Protections & Mandatory Relocation Assistance)
 3. California Civil Code § 1947.12 (AB 1482 Tenant Protection Act of 2019)
 4. California Civil Code § 1950.5 (AB 12 Security Deposit Ceiling of 1 Month Rent)
+5. California Civil Code § 1941.1 & § 1953 (Habitability Standards & Void Retaliatory Clauses)
 
 DEMANDED REMEDY & ACTION REQUIRED:
 1. Rescind or amend the unlawful terms to comply with the statutory limits set forth above within fourteen (14) calendar days of service of this letter.
-2. Provide written confirmation of corrected rent/deposit values or valid statutory eviction grounds.
+2. Provide written confirmation of corrected rent/deposit values or immediate remediation of hazardous conditions.
 
 Please be advised that if these municipal violations are not cured within the 14-day statutory period, this matter will be formally referred to the City of Santa Cruz Housing Authority and Santa Cruz County Legal Aid for dispute mediation and enforcement of tenant rights.
 
@@ -265,7 +284,8 @@ Santa Cruz Tenant
         rent_matches = re.findall(r'\$?([0-9,]{4,5})', tenant_text)
         rent_vals = [float(r.replace(',', '')) for r in rent_matches]
         
-        if "rent" in text_lower or len(rent_vals) >= 2 or "increase" in text_lower:
+        # Check 1: Rent increase check (only if explicit rent hike / increase is mentioned)
+        if "increase" in text_lower or ("rent" in text_lower and len(rent_vals) >= 2):
             current_r = rent_vals[0] if len(rent_vals) >= 1 else 2800.0
             proposed_r = rent_vals[1] if len(rent_vals) >= 2 else (current_r * 1.15)
             
@@ -289,7 +309,9 @@ Santa Cruz Tenant
                 "result": calc_res
             })
 
-        if any(w in text_lower for w in ["evict", "notice", "vacate", "terminate", "quit", "move out"]):
+        # Check 2: Actual Eviction Notice Check (Strict Phrase Matching)
+        is_actual_eviction_notice = any(phrase in text_lower for phrase in ["notice to vacate", "notice to quit", "60-day notice", "30-day notice to terminate", "eviction notice", "demanding move out"])
+        if is_actual_eviction_notice:
             dur_months = 18 if "year" in text_lower or "18 month" in text_lower else 12
             reloc_offered = 0.0
             if "1,500" in tenant_text or "1500" in tenant_text:
@@ -327,7 +349,8 @@ Santa Cruz Tenant
                 "result": evict_res
             })
 
-        if "deposit" in text_lower or "security deposit" in text_lower:
+        # Check 3: Security Deposit Limit Check
+        if "security deposit" in text_lower or ("deposit" in text_lower and len(rent_vals) >= 2):
             m_rent = rent_vals[0] if len(rent_vals) > 0 else 2900.0
             dep_amt = rent_vals[1] if len(rent_vals) > 1 else (m_rent * 2.0)
             
@@ -349,6 +372,28 @@ Santa Cruz Tenant
                 "type": "tool_result",
                 "title": "tool output: security deposit limit check",
                 "result": dep_res
+            })
+
+        # Check 4: Habitability & Retaliation Check
+        if any(w in text_lower for w in ["mold", "leak", "inspector", "defect", "repair", "habitability", "prohibit"]):
+            hab_args = {"issue_description": tenant_text}
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_call",
+                "title": "Gemma 4 function call: verify_habitability_and_retaliation",
+                "tool_name": "verify_habitability_and_retaliation",
+                "tool_args": hab_args
+            })
+            
+            hab_res = self.execute_tool("verify_habitability_and_retaliation", hab_args)
+            tool_results.append(("verify_habitability_and_retaliation", hab_res))
+            tool_results_summary["habitability"] = hab_res
+            
+            trace_steps.append({
+                "step": len(trace_steps) + 1,
+                "type": "tool_result",
+                "title": "tool output: habitability and retaliation check",
+                "result": hab_res
             })
 
         law_args = {"query_topic": "Santa Cruz tenant rights", "jurisdiction": "Santa Cruz"}
@@ -388,6 +433,11 @@ Santa Cruz Tenant
                 is_illegal = True
                 violations.append(f"illegal security deposit: requested deposit of ${res['deposit_amount']:.2f} exceeds California AB 12 limit of 1 month rent (${res['max_legal_deposit']:.2f}). overcharge is ${res['excess_amount']:.2f}.")
                 recommendations.append("request written credit or refund of deposit excess under California Civil Code § 1950.5 (AB 12).")
+            elif name == "verify_habitability_and_retaliation" and res.get("has_violations"):
+                is_illegal = True
+                for v in res.get("violations", []):
+                    violations.append(v)
+                recommendations.append("demand immediate remediation of hazardous conditions under CA Civil Code § 1941.1 and assert protection against retaliatory terms under § 1953.")
 
         if not violations:
             violations.append("no immediate statutory violations detected based on input text, but tenant should retain written records.")
@@ -426,7 +476,7 @@ Santa Cruz Tenant
             "step": len(trace_steps) + 1,
             "type": "synthesis",
             "title": "Gemma 4 final synthesis and action plan",
-            "content": f"completed 6 tool invocations against Santa Cruz Municipal Code and California statutes. generated customized formal dispute notice."
+            "content": f"completed tool invocations against Santa Cruz Municipal Code and California statutes. generated customized formal dispute notice."
         })
 
         return {
@@ -445,9 +495,9 @@ Santa Cruz Tenant
 if __name__ == "__main__":
     agent = GemmaAgentEngine()
     test_res = agent.analyze_scenario(
-        "my landlord in Downtown Santa Cruz sent an 18% rent increase notice from $2,800 to $3,304 starting next month. is this legal?",
-        tenant_name="Alex Rivera",
-        landlord_name="Bayshore Coastal Rental Mgmt"
+        "my lease on the Westside has a clause stating: 'tenant agrees not to report any physical building defects to Santa Cruz City Inspectors without prior landlord consent, or tenancy will be immediately terminated for breach.' the bathroom has severe black mold and leaking pipes that the landlord refuses to fix.",
+        tenant_name="Samantha Taylor",
+        landlord_name="Apex Redwood Residential Co"
     )
     print("test agent analysis execution complete.")
     print("illegal detected:", test_res["is_illegal"])

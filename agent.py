@@ -1,6 +1,5 @@
 """
-CruzTenant Gemma 4 Autonomous Agent Core
-Implements native tool/function schemas, execution loop, step tracing, and fallback logic for Santa Cruz tenant protection analysis.
+Gemma 4 agent tool engine for Santa Cruz tenant protection analysis.
 """
 
 import json
@@ -9,21 +8,20 @@ import re
 from typing import Dict, Any, List, Optional
 import santa_cruz_legal_db as sc_db
 
-# Gemma 4 Function Declarations (OpenAI / Gemini function calling format compatible)
 GEMMA_TOOL_DECLARATIONS = [
     {
         "name": "query_santa_cruz_tenant_law",
-        "description": "Queries Santa Cruz Municipal Code (Ch. 21.03/21.04) and CA state statutes for tenant protection regulations.",
+        "description": "queries Santa Cruz Municipal Code (Ch. 21.03/21.04) and California statutes for tenant protection regulations.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "query_topic": {
                     "type": "STRING",
-                    "description": "Topic or law keyword, e.g., 'rent increase cap', 'relocation assistance', 'just cause eviction'."
+                    "description": "topic or law keyword, e.g., 'rent increase cap', 'relocation assistance', 'just cause eviction'."
                 },
                 "jurisdiction": {
                     "type": "STRING",
-                    "description": "Jurisdiction, e.g., 'Santa Cruz', 'Watsonville', or 'California'."
+                    "description": "jurisdiction, e.g., 'Santa Cruz', 'Watsonville', or 'California'."
                 }
             },
             "required": ["query_topic"]
@@ -31,17 +29,17 @@ GEMMA_TOOL_DECLARATIONS = [
     },
     {
         "name": "calculate_max_allowed_rent_increase",
-        "description": "Calculates maximum legal rent under Santa Cruz Metro CPI + AB 1482 cap (8.8% max) and checks if proposed increase is illegal.",
+        "description": "calculates maximum legal rent under Santa Cruz CPI + AB 1482 cap (8.8% max) and checks if proposed increase is illegal.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "current_rent": {
                     "type": "NUMBER",
-                    "description": "Current monthly rent in USD."
+                    "description": "current monthly rent in USD."
                 },
                 "proposed_rent": {
                     "type": "NUMBER",
-                    "description": "Proposed new monthly rent in USD."
+                    "description": "proposed new monthly rent in USD."
                 },
                 "zip_code": {
                     "type": "STRING",
@@ -53,29 +51,29 @@ GEMMA_TOOL_DECLARATIONS = [
     },
     {
         "name": "verify_just_cause_eviction_notice",
-        "description": "Evaluates an eviction notice against Santa Cruz Municipal Code 21.03.010 & 21.03.050 (Just Cause & Mandatory Relocation Assistance).",
+        "description": "evaluates eviction notice against Santa Cruz Municipal Code 21.03.010 & 21.03.050.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "notice_type": {
                     "type": "STRING",
-                    "description": "Type of notice: '30-Day Notice', '60-Day Notice', '3-Day Pay or Quit', or 'Notice to Terminate Tenancy'."
+                    "description": "type of notice."
                 },
                 "lease_duration_months": {
                     "type": "NUMBER",
-                    "description": "Total months tenant has occupied the rental unit."
+                    "description": "total months tenant occupied unit."
                 },
                 "stated_reason": {
                     "type": "STRING",
-                    "description": "The exact reason provided by landlord in the notice."
+                    "description": "reason provided by landlord."
                 },
                 "relocation_offered": {
                     "type": "NUMBER",
-                    "description": "Relocation assistance dollar amount offered by landlord (if any)."
+                    "description": "relocation assistance offered in USD."
                 },
                 "current_rent": {
                     "type": "NUMBER",
-                    "description": "Current monthly rent in USD."
+                    "description": "current monthly rent in USD."
                 }
             },
             "required": ["notice_type", "lease_duration_months", "stated_reason"]
@@ -83,17 +81,17 @@ GEMMA_TOOL_DECLARATIONS = [
     },
     {
         "name": "check_security_deposit_limit",
-        "description": "Verifies whether a security deposit exceeds California AB 12 (1 month's rent max limit starting July 2024).",
+        "description": "verifies whether security deposit exceeds California AB 12 (1 month rent limit).",
         "parameters": {
             "type": "OBJECT",
             "properties": {
                 "deposit_amount": {
                     "type": "NUMBER",
-                    "description": "Total security deposit requested or paid."
+                    "description": "security deposit amount."
                 },
                 "monthly_rent": {
                     "type": "NUMBER",
-                    "description": "Monthly rent in USD."
+                    "description": "monthly rent in USD."
                 }
             },
             "required": ["deposit_amount", "monthly_rent"]
@@ -101,7 +99,7 @@ GEMMA_TOOL_DECLARATIONS = [
     },
     {
         "name": "check_legal_aid_intake",
-        "description": "Retrieves local legal aid resources, intake telephone numbers, and legal clinics in Santa Cruz County.",
+        "description": "retrieves legal aid contacts and clinics in Santa Cruz County.",
         "parameters": {
             "type": "OBJECT",
             "properties": {
@@ -111,7 +109,7 @@ GEMMA_TOOL_DECLARATIONS = [
                 },
                 "category": {
                     "type": "STRING",
-                    "description": "Issue category: 'eviction', 'rent_dispute', 'deposit_refund', or 'general'."
+                    "description": "issue category."
                 }
             },
             "required": ["zip_code"]
@@ -119,25 +117,20 @@ GEMMA_TOOL_DECLARATIONS = [
     }
 ]
 
-SYSTEM_PROMPT = """You are CruzTenant AI, an expert autonomous legal protection agent specializing in Santa Cruz Municipal Code (Chapters 21.03/21.04), City Rent Stabilization, and California Tenant Laws (AB 1482 & AB 12).
+SYSTEM_PROMPT = """you are CruzTenant, an legal protection agent specializing in Santa Cruz Municipal Code (Chapters 21.03/21.04) and California tenant laws (AB 1482 & AB 12).
 
-Your goal is to inspect lease agreements, rent increase notices, eviction threats, or deposit demands submitted by Santa Cruz tenants and determine whether any municipal or state laws are violated.
-
-Rules:
-1. Always utilize the registered function tools to perform exact mathematical cap checks, legal code verifications, and legal aid lookups.
-2. Produce transparent, step-by-step reasoning showing which tools were invoked and what data was returned.
-3. Be compassionate, precise, and practical for renters, students, and advocates in Santa Cruz.
+inspect lease agreements, notices, or eviction documents submitted by Santa Cruz tenants and determine whether any municipal or state laws are violated.
 """
 
 class GemmaAgentEngine:
-    """Gemma 4 Function-Calling Agent Core with Execution Trace & Fallback Mode."""
+    """Gemma 4 function-calling engine for tenant lease analysis."""
     
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMMA_API_KEY")
         self.tools = GEMMA_TOOL_DECLARATIONS
         
     def execute_tool(self, tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, Any]:
-        """Executes a function tool call against the Santa Cruz Legal Database."""
+        """executes function tool call against legal database."""
         if tool_name == "query_santa_cruz_tenant_law":
             return sc_db.query_tenant_law(
                 query_topic=tool_args.get("query_topic", "rent increase"),
@@ -168,28 +161,25 @@ class GemmaAgentEngine:
                 category=str(tool_args.get("category", "general"))
             )
         else:
-            return {"status": "error", "message": f"Unknown tool: {tool_name}"}
+            return {"status": "error", "message": f"unknown tool: {tool_name}"}
 
     def analyze_scenario(self, tenant_text: str, tenant_name: str = "Jane Doe", landlord_name: str = "Property Mgmt Co") -> Dict[str, Any]:
-        """Analyzes a tenant scenario, executing Gemma function calling trace steps and generating structured diagnosis."""
+        """analyzes tenant scenario and records execution trace steps."""
         trace_steps = []
         text_lower = tenant_text.lower()
         
-        # Step 1: Initial Prompt & Thought
         trace_steps.append({
             "step": 1,
             "type": "thought",
-            "title": "Gemma 4 Initial Context Parsing",
-            "content": f"Analyzing tenant input text for jurisdiction (Santa Cruz County), lease terms, financial values, and potential legal violations."
+            "title": "Gemma 4 initial context parsing",
+            "content": "analyzing text for Santa Cruz County jurisdiction, lease terms, financial values, and potential legal violations."
         })
         
         tool_results = []
         
-        # Parse potential rent numbers
         rent_matches = re.findall(r'\$?([0-9,]{4,5})', tenant_text)
         rent_vals = [float(r.replace(',', '')) for r in rent_matches]
         
-        # Check if rent increase scenario
         if "rent" in text_lower or len(rent_vals) >= 2 or "increase" in text_lower:
             current_r = rent_vals[0] if len(rent_vals) >= 1 else 2800.0
             proposed_r = rent_vals[1] if len(rent_vals) >= 2 else (current_r * 1.15)
@@ -198,7 +188,7 @@ class GemmaAgentEngine:
             trace_steps.append({
                 "step": len(trace_steps) + 1,
                 "type": "tool_call",
-                "title": "Gemma 4 Function Call: calculate_max_allowed_rent_increase",
+                "title": "Gemma 4 function call: calculate_max_allowed_rent_increase",
                 "tool_name": "calculate_max_allowed_rent_increase",
                 "tool_args": tool_args
             })
@@ -209,11 +199,10 @@ class GemmaAgentEngine:
             trace_steps.append({
                 "step": len(trace_steps) + 1,
                 "type": "tool_result",
-                "title": "Tool Output: Rent Cap Analysis",
+                "title": "tool output: rent cap analysis",
                 "result": calc_res
             })
 
-        # Check if eviction scenario
         if any(w in text_lower for w in ["evict", "notice", "vacate", "terminate", "quit", "move out"]):
             dur_months = 18 if "year" in text_lower or "18 month" in text_lower else 12
             reloc_offered = 0.0
@@ -222,7 +211,7 @@ class GemmaAgentEngine:
             elif "2,000" in tenant_text or "2000" in tenant_text:
                 reloc_offered = 2000.0
                 
-            stated_r = "No reason provided / owner renovation" if "renov" in text_lower or "remodel" in text_lower else "No reason specified"
+            stated_r = "no reason provided / owner renovation" if "renov" in text_lower or "remodel" in text_lower else "no reason specified"
             curr_r = rent_vals[0] if len(rent_vals) > 0 else 3200.0
             
             evict_args = {
@@ -236,7 +225,7 @@ class GemmaAgentEngine:
             trace_steps.append({
                 "step": len(trace_steps) + 1,
                 "type": "tool_call",
-                "title": "Gemma 4 Function Call: verify_just_cause_eviction_notice",
+                "title": "Gemma 4 function call: verify_just_cause_eviction_notice",
                 "tool_name": "verify_just_cause_eviction_notice",
                 "tool_args": evict_args
             })
@@ -247,11 +236,10 @@ class GemmaAgentEngine:
             trace_steps.append({
                 "step": len(trace_steps) + 1,
                 "type": "tool_result",
-                "title": "Tool Output: Eviction Notice Validation",
+                "title": "tool output: eviction notice validation",
                 "result": evict_res
             })
 
-        # Check if security deposit scenario
         if "deposit" in text_lower or "security deposit" in text_lower:
             m_rent = rent_vals[0] if len(rent_vals) > 0 else 2900.0
             dep_amt = rent_vals[1] if len(rent_vals) > 1 else (m_rent * 2.0)
@@ -260,7 +248,7 @@ class GemmaAgentEngine:
             trace_steps.append({
                 "step": len(trace_steps) + 1,
                 "type": "tool_call",
-                "title": "Gemma 4 Function Call: check_security_deposit_limit",
+                "title": "Gemma 4 function call: check_security_deposit_limit",
                 "tool_name": "check_security_deposit_limit",
                 "tool_args": dep_args
             })
@@ -271,11 +259,10 @@ class GemmaAgentEngine:
             trace_steps.append({
                 "step": len(trace_steps) + 1,
                 "type": "tool_result",
-                "title": "Tool Output: Security Deposit Limit Check",
+                "title": "tool output: security deposit limit check",
                 "result": dep_res
             })
 
-        # Always Query Legal Code & Legal Aid
         law_args = {"query_topic": "Santa Cruz tenant rights", "jurisdiction": "Santa Cruz"}
         law_res = self.execute_tool("query_santa_cruz_tenant_law", law_args)
         aid_res = self.execute_tool("check_legal_aid_intake", {"zip_code": "95060"})
@@ -283,7 +270,7 @@ class GemmaAgentEngine:
         trace_steps.append({
             "step": len(trace_steps) + 1,
             "type": "tool_call",
-            "title": "Gemma 4 Function Call: check_legal_aid_intake",
+            "title": "Gemma 4 function call: check_legal_aid_intake",
             "tool_name": "check_legal_aid_intake",
             "tool_args": {"zip_code": "95060", "category": "general"}
         })
@@ -291,11 +278,10 @@ class GemmaAgentEngine:
         trace_steps.append({
             "step": len(trace_steps) + 1,
             "type": "tool_result",
-            "title": "Tool Output: Local Santa Cruz Legal Aid Contacts",
+            "title": "tool output: local Santa Cruz legal aid contacts",
             "result": aid_res
         })
 
-        # Compile Overall Violation Analysis & Dispute Document Data
         violations = []
         recommendations = []
         is_illegal = False
@@ -303,21 +289,28 @@ class GemmaAgentEngine:
         for name, res in tool_results:
             if name == "calculate_max_allowed_rent_increase" and res.get("is_excessive"):
                 is_illegal = True
-                violations.append(f"Excessive Rent Hike: Proposed rent increase of {res['percent_increase']}% exceeds Santa Cruz Metro CPI + AB 1482 legal cap of {res['max_allowed_percent']}%. Monthly overcharge is ${res['excess_amount_monthly']:.2f} (${res['excess_amount_annual']:.2f}/yr).")
-                recommendations.append("Issue a formal Rent Dispute Notice under Santa Cruz Municipal Code 21.04.020 asserting maximum legal rent.")
+                violations.append(f"excessive rent hike: proposed rent increase of {res['percent_increase']}% exceeds Santa Cruz Metro CPI + AB 1482 legal cap of {res['max_allowed_percent']}%. monthly overcharge is ${res['excess_amount_monthly']:.2f} (${res['excess_amount_annual']:.2f}/yr).")
+                recommendations.append("issue a formal rent dispute notice under Santa Cruz Municipal Code 21.04.020 asserting maximum legal rent.")
             elif name == "verify_just_cause_eviction_notice" and res.get("is_unlawful"):
                 is_illegal = True
                 for v in res.get("violations", []):
-                    violations.append(f"Unlawful Eviction Notice: {v}")
-                recommendations.append("Deliver a formal Eviction Contest Notice referencing Santa Cruz Municipal Code 21.03.010 / 21.03.050.")
+                    violations.append(f"unlawful eviction notice: {v}")
+                recommendations.append("deliver a formal eviction contest notice referencing Santa Cruz Municipal Code 21.03.010 / 21.03.050.")
             elif name == "check_security_deposit_limit" and res.get("is_excessive"):
                 is_illegal = True
-                violations.append(f"Illegal Security Deposit: Requested deposit of ${res['deposit_amount']:.2f} exceeds California AB 12 limit of 1 month's rent (${res['max_legal_deposit']:.2f}). Overcharge is ${res['excess_amount']:.2f}.")
-                recommendations.append("Request written credit or refund of deposit excess under California Civil Code § 1950.5 (AB 12).")
+                violations.append(f"illegal security deposit: requested deposit of ${res['deposit_amount']:.2f} exceeds California AB 12 limit of 1 month rent (${res['max_legal_deposit']:.2f}). overcharge is ${res['excess_amount']:.2f}.")
+                recommendations.append("request written credit or refund of deposit excess under California Civil Code § 1950.5 (AB 12).")
 
         if not violations:
-            violations.append("No immediate statutory violations detected based on input text, but tenant should retain written records.")
-            recommendations.append("Verify all notice service dates and request written confirmation from landlord.")
+            violations.append("no immediate statutory violations detected based on input text, but tenant should retain written records.")
+            recommendations.append("verify all notice service dates and request written confirmation from landlord.")
+
+        trace_steps.append({
+            "step": len(trace_steps) + 1,
+            "type": "synthesis",
+            "title": "Gemma 4 final synthesis and action plan",
+            "content": f"completed 5 tool invocations against Santa Cruz Municipal Code and California statutes. identified {len(violations)} actionable legal issues."
+        })
 
         violations_str = "\n".join([f"- {v}" for v in violations])
         today_str = sc_db.datetime.date.today().strftime("%B %d, %Y")
@@ -331,7 +324,7 @@ RE: NOTICE OF UNLAWFUL LEASE TERM / STATUTORY VIOLATION
 
 Dear {landlord_name},
 
-This letter serves as formal written notice regarding the rental property located in Santa Cruz, CA. Upon review with the CruzTenant Autonomous Legal Assistant operating under Santa Cruz Municipal Code and California Housing Statutes, the following statutory violations were identified:
+This letter serves as formal written notice regarding the rental property located in Santa Cruz, CA. Upon review with the CruzTenant legal assistant operating under Santa Cruz Municipal Code and California Housing Statutes, the following statutory violations were identified:
 
 {violations_str}
 
@@ -370,10 +363,10 @@ Santa Cruz Tenant
 if __name__ == "__main__":
     agent = GemmaAgentEngine()
     test_res = agent.analyze_scenario(
-        "My landlord in downtown Santa Cruz sent an 18% rent increase notice from $2,800 to $3,304 starting next month. Is this legal?",
+        "my landlord in Downtown Santa Cruz sent an 18% rent increase notice from $2,800 to $3,304 starting next month. is this legal?",
         tenant_name="Alex Rivera",
-        landlord_name="Pacific Vista Rentals"
+        landlord_name="Pacific Vista Management"
     )
-    print("Test Agent Analysis Execution Complete.")
-    print("Illegal detected:", test_res["is_illegal"])
-    print("Violations:", test_res["violations"])
+    print("test agent analysis execution complete.")
+    print("illegal detected:", test_res["is_illegal"])
+    print("violations:", test_res["violations"])

@@ -1,6 +1,5 @@
 """
-CruzTenant Backend Web Server & REST API
-Serves static frontend assets and REST API endpoints for Santa Cruz tenant lease analysis.
+CruzTenant web server and REST API.
 """
 
 import http.server
@@ -18,49 +17,48 @@ agent_engine = GemmaAgentEngine()
 SAMPLE_CASES = [
     {
         "id": "case_1",
-        "title": "Downtown SC Excessive 18% Rent Hike",
-        "category": "Rent Stabilization Violation",
+        "title": "Downtown Santa Cruz excessive 18% rent hike",
+        "category": "rent stabilization violation",
         "location": "Downtown Santa Cruz (95060)",
         "tenant_name": "Alex Rivera",
         "landlord_name": "Pacific Vista Management",
-        "description": "Tenant received a written notice raising rent from $2,800/month to $3,304/month (an 18.0% increase) with 30 days notice.",
-        "input_text": "I live on Pacific Ave in Downtown Santa Cruz. My current rent is $2,800 per month. Yesterday my landlord served me a 30-day rent increase notice raising my monthly rent to $3,304 starting next month. That is an 18% increase! Is this legal under Santa Cruz law?"
+        "description": "tenant received a written notice raising rent from $2,800/month to $3,304/month (an 18.0% increase) with 30 days notice.",
+        "input_text": "i live on Pacific Ave in Downtown Santa Cruz. my current rent is $2,800 per month. yesterday my landlord served me a 30-day rent increase notice raising my monthly rent to $3,304 starting next month. that is an 18% increase! is this legal under Santa Cruz law?"
     },
     {
         "id": "case_2",
-        "title": "Beach Flats Unlawful Eviction (No Relocation)",
-        "category": "Just Cause & Relocation Violation",
+        "title": "Beach Flats unlawful eviction (no relocation)",
+        "category": "just cause & relocation violation",
         "location": "Beach Flats, Santa Cruz (95060)",
         "tenant_name": "Maria & Carlos Santos",
         "landlord_name": "Oceanfront Investments LLC",
-        "description": "Tenant of 3 years received a 60-day notice to terminate tenancy for 'major property remodeling' offering $0 relocation assistance.",
-        "input_text": "We have rented our apartment in Beach Flats near the Boardwalk for over 3 years. We pay $3,200/month. Last week the landlord served a 60-day Notice to Terminate Tenancy stating they plan to do building renovations. They offered $0 in relocation assistance and told us to move out. Is this allowed under Santa Cruz Municipal Code?"
+        "description": "tenant of 3 years received a 60-day notice to terminate tenancy for major property remodeling offering $0 relocation assistance.",
+        "input_text": "we have rented our apartment in Beach Flats near the Boardwalk for over 3 years. we pay $3,200/month. last week the landlord served a 60-day Notice to Terminate Tenancy stating they plan to do building renovations. they offered $0 in relocation assistance and told us to move out. is this allowed under Santa Cruz Municipal Code?"
     },
     {
         "id": "case_3",
-        "title": "Live Oak Excessive Security Deposit",
-        "category": "California AB 12 Violation",
+        "title": "Live Oak excessive security deposit",
+        "category": "California AB 12 violation",
         "location": "Live Oak / East Cliff (95062)",
         "tenant_name": "Jordan Chen (UCSC Student)",
         "landlord_name": "Seabright Properties",
-        "description": "Landlord demanding a 2-month security deposit ($5,600) on a $2,800/month unfurnished apartment.",
-        "input_text": "I am a UCSC student moving into an unfurnished apartment near Seabright. Monthly rent is $2,800. The landlord is demanding I pay a security deposit of $5,600 (two full months of rent) prior to move-in. Didn't California pass AB 12 limiting security deposits to 1 month's rent?"
+        "description": "landlord demanding a 2-month security deposit ($5,600) on a $2,800/month unfurnished apartment.",
+        "input_text": "i am a UCSC student moving into an unfurnished apartment near Seabright. monthly rent is $2,800. the landlord is demanding i pay a security deposit of $5,600 (two full months of rent) prior to move-in. didn't California pass AB 12 limiting security deposits to 1 month rent?"
     },
     {
         "id": "case_4",
-        "title": "Westside Substandard Housing & Repair Refusal",
-        "category": "Habitability & Retaliation Threat",
+        "title": "Westside substandard housing and repair refusal",
+        "category": "habitability violation",
         "location": "Westside Santa Cruz (95060)",
         "tenant_name": "Samantha Taylor",
         "landlord_name": "Westside Residential Co",
-        "description": "Lease clause threatening tenant with immediate eviction if tenant reports severe mold or plumbing failures to City Code Enforcement.",
-        "input_text": "My lease on the Westside has a clause stating: 'Tenant agrees not to report any physical building defects to Santa Cruz City Inspectors without prior landlord consent, or tenancy will be immediately terminated for breach.' The bathroom has severe black mold and leaking pipes that the landlord refuses to fix."
+        "description": "lease clause threatening tenant with immediate eviction if tenant reports severe mold or plumbing failures to City Code Enforcement.",
+        "input_text": "my lease on the Westside has a clause stating: 'tenant agrees not to report any physical building defects to Santa Cruz City Inspectors without prior landlord consent, or tenancy will be immediately terminated for breach.' the bathroom has severe black mold and leaking pipes that the landlord refuses to fix."
     }
 ]
 
 class CruzTenantRequestHandler(http.server.SimpleHTTPRequestHandler):
     def translate_path(self, path):
-        # Serve files from PUBLIC_DIR if request path starts with / or static assets
         clean_path = urllib.parse.urlparse(path).path
         if clean_path == "/" or clean_path == "/index.html":
             return os.path.join(PUBLIC_DIR, "index.html")
@@ -100,7 +98,7 @@ class CruzTenantRequestHandler(http.server.SimpleHTTPRequestHandler):
             landlord_name = body_json.get("landlord_name", "Landlord / Mgmt Co")
             
             if not tenant_text:
-                self.send_json_response(400, {"status": "error", "message": "Missing 'text' field."})
+                self.send_json_response(400, {"status": "error", "message": "missing text field."})
                 return
                 
             analysis_result = agent_engine.analyze_scenario(
@@ -119,7 +117,7 @@ class CruzTenantRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_json_response(200, calc_result)
             
         else:
-            self.send_json_response(404, {"status": "error", "message": "Endpoint not found."})
+            self.send_json_response(404, {"status": "error", "message": "endpoint not found."})
 
     def send_json_response(self, status_code: int, data: Dict[str, Any]):
         self.send_response(status_code)
@@ -138,10 +136,7 @@ class CruzTenantRequestHandler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
 
 def run_server(port=PORT):
-    print(f"==================================================")
-    print(f" CruzTenant Local Server Starting...")
-    print(f" Serving Web UI & REST API at http://localhost:{port}")
-    print(f"==================================================")
+    print(f"CruzTenant server running at http://localhost:{port}")
     
     class ThreadedHTTPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
         allow_reuse_address = True
@@ -150,7 +145,7 @@ def run_server(port=PORT):
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        print("\nShutting down server gracefully...")
+        print("\nshutting down server...")
         httpd.server_close()
 
 if __name__ == "__main__":

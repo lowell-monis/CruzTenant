@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-  // DOM Elements
   const samplePills = document.getElementById('samplePills');
   const tenantNameInput = document.getElementById('tenantName');
   const landlordNameInput = document.getElementById('landlordName');
@@ -27,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let sampleCases = [];
 
-  // Fetch Sample Cases on Init
   fetch('/api/sample-cases')
     .then(res => res.json())
     .then(data => {
@@ -36,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderSamplePills();
       }
     })
-    .catch(err => console.error('Failed to load sample cases:', err));
+    .catch(err => console.error('failed to load sample cases:', err));
 
   function renderSamplePills() {
     samplePills.innerHTML = '';
@@ -48,7 +46,6 @@ document.addEventListener('DOMContentLoaded', () => {
       samplePills.appendChild(pill);
     });
 
-    // Auto-load first sample case
     if (sampleCases.length > 0) {
       loadSampleCase(sampleCases[0]);
     }
@@ -61,10 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     tenantNameInput.value = c.tenant_name || 'Alex Rivera';
-    landlordNameInput.value = c.landlord_name || 'Property Mgmt Co';
+    landlordNameInput.value = c.landlord_name || 'Pacific Vista Management';
     inputTextarea.value = c.input_text;
     
-    // Auto sync rent calculator if available in case 1
     if (c.id === 'case_1') {
       calcCurrentRent.value = 2800;
       calcProposedRent.value = 3304;
@@ -75,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
     updateRentCalculator();
   }
 
-  // Interactive Calculator Logic
   function updateRentCalculator() {
     const curr = parseFloat(calcCurrentRent.value) || 0;
     const prop = parseFloat(calcProposedRent.value) || 0;
@@ -83,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (curr <= 0) return;
     
     const pct = ((prop - curr) / curr) * 100.0;
-    const maxLegalRent = curr * (1 + 0.088); // 8.8% cap under SC CPI
+    const maxLegalRent = curr * (1 + 0.088);
     const excessMonthly = Math.max(0, prop - maxLegalRent);
     
     resIncreasePct.textContent = `${pct.toFixed(2)}%`;
@@ -95,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
       resExcessMonthly.textContent = `$${excessMonthly.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} / mo`;
       resExcessMonthly.className = 'text-warning';
     } else {
-      resExcessMonthly.textContent = '$0.00 (Within Cap)';
+      resExcessMonthly.textContent = '$0.00 (within cap)';
       resExcessMonthly.className = 'text-success';
     }
   }
@@ -103,30 +98,28 @@ document.addEventListener('DOMContentLoaded', () => {
   calcCurrentRent.addEventListener('input', updateRentCalculator);
   calcProposedRent.addEventListener('input', updateRentCalculator);
 
-  // Clear Input Button
   clearBtn.addEventListener('click', () => {
     inputTextarea.value = '';
     agentTraceSection.style.display = 'none';
     resultsSection.style.display = 'none';
   });
 
-  // Analyze Button Click (Trigger Agent Execution)
   analyzeBtn.addEventListener('click', () => {
     const text = inputTextarea.value.trim();
     if (!text) {
-      alert('Please enter lease text, a notice, or select a sample case to analyze.');
+      alert('please enter lease text or select a sample case.');
       return;
     }
 
     analyzeBtn.disabled = true;
     analyzeBtn.innerHTML = `
       <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
-      Running Gemma 4 Agent...
+      running Gemma 4...
     `;
 
     agentTraceSection.style.display = 'block';
     resultsSection.style.display = 'none';
-    timelineContainer.innerHTML = '<div class="timeline-item"><span class="step-icon">Agent</span><div class="step-content"><h5>Initializing Gemma 4 Tool Engine...</h5><p>Parsing text for Santa Cruz legal compliance...</p></div></div>';
+    timelineContainer.innerHTML = '<div class="timeline-item"><span class="step-icon">Step 1</span><div class="step-content"><h5>initializing Gemma 4 tool engine...</h5><p>parsing text for Santa Cruz legal compliance...</p></div></div>';
 
     fetch('/api/analyze', {
       method: 'POST',
@@ -142,42 +135,40 @@ document.addEventListener('DOMContentLoaded', () => {
       analyzeBtn.disabled = false;
       analyzeBtn.innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        Analyze with Gemma 4 Agent
+        analyze with Gemma 4
       `;
 
       if (data.status === 'success') {
         renderAgentTrace(data.agent_trace);
         renderAnalysisResults(data);
       } else {
-        alert('Analysis Error: ' + (data.message || 'Unknown error'));
+        alert('analysis error: ' + (data.message || 'unknown error'));
       }
     })
     .catch(err => {
-      console.error('Agent analysis error:', err);
+      console.error('analysis error:', err);
       analyzeBtn.disabled = false;
-      analyzeBtn.innerHTML = 'Analyze with Gemma 4 Agent';
-      alert('Failed to connect to backend server.');
+      analyzeBtn.innerHTML = 'analyze with Gemma 4';
+      alert('failed to connect to server.');
     });
   });
 
-  // Render Tool Execution Timeline Trace
   function renderAgentTrace(traceSteps) {
     timelineContainer.innerHTML = '';
-    agentStatusBadge.textContent = `${traceSteps.length} Trace Steps`;
+    agentStatusBadge.textContent = `${traceSteps.length} trace steps`;
 
     traceSteps.forEach((step, idx) => {
       const item = document.createElement('div');
       item.className = 'timeline-item';
       
-      let stepTag = step.type === 'tool_call' ? 'TOOL CALL' : (step.type === 'tool_result' ? 'RESULT' : 'THOUGHT');
       let iconClass = step.type.includes('tool') ? 'step-icon tool' : 'step-icon';
 
       let bodyHtml = `<p>${step.content || ''}</p>`;
       if (step.tool_args) {
-        bodyHtml += `<div class="code-block">Tool Arguments: ${JSON.stringify(step.tool_args, null, 2)}</div>`;
+        bodyHtml += `<div class="code-block">tool arguments: ${JSON.stringify(step.tool_args, null, 2)}</div>`;
       }
       if (step.result) {
-        bodyHtml += `<div class="code-block">Tool Output: ${JSON.stringify(step.result, null, 2)}</div>`;
+        bodyHtml += `<div class="code-block">tool output: ${JSON.stringify(step.result, null, 2)}</div>`;
       }
 
       item.innerHTML = `
@@ -191,19 +182,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Render Final Legal Diagnosis & Dispute Form
   function renderAnalysisResults(data) {
     resultsSection.style.display = 'block';
 
     if (data.is_illegal) {
       statusBanner.className = 'status-banner illegal';
-      statusBanner.innerHTML = `⚠️ STATUTORY VIOLATION DETECTED: Identified ${data.violations_count} unlawful terms under Santa Cruz Municipal Code / CA Law.`;
+      statusBanner.innerHTML = `⚠️ statutory violation detected: identified ${data.violations_count} unlawful terms under Santa Cruz Municipal Code or California law.`;
     } else {
       statusBanner.className = 'status-banner legal';
-      statusBanner.innerHTML = `✅ COMPLIANT NOTICE: No immediate municipal violations detected. Terms appear legal under Santa Cruz cap rules.`;
+      statusBanner.innerHTML = `✅ compliant notice: no statutory violations detected. terms comply with Santa Cruz cap rules.`;
     }
 
-    // Render Violations List
     violationsList.innerHTML = '';
     data.violations.forEach(v => {
       const div = document.createElement('div');
@@ -212,7 +201,6 @@ document.addEventListener('DOMContentLoaded', () => {
       violationsList.appendChild(div);
     });
 
-    // Render Recommendations
     recommendationsList.innerHTML = '';
     data.recommendations.forEach(r => {
       const div = document.createElement('div');
@@ -221,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
       recommendationsList.appendChild(div);
     });
 
-    // Render Legal Aid Contacts
     legalAidList.innerHTML = '';
     (data.legal_aid_resources || []).forEach(aid => {
       const div = document.createElement('div');
@@ -229,19 +216,15 @@ document.addEventListener('DOMContentLoaded', () => {
       div.innerHTML = `
         <strong>${aid.name}</strong><br>
         📍 ${aid.address} | 📞 ${aid.phone}<br>
-        <span style="color: var(--text-dim); font-size: 0.78rem;">Services: ${aid.services.join(', ')}</span>
+        <span style="color: var(--text-dim); font-size: 0.78rem;">services: ${aid.services.join(', ')}</span>
       `;
       legalAidList.appendChild(div);
     });
 
-    // Render Formal Dispute Letter
     disputeLetterBox.textContent = data.dispute_letter;
-
-    // Scroll to results smoothly
     resultsSection.scrollIntoView({ behavior: 'smooth' });
   }
 
-  // Print/Export Letter Handler
   printLetterBtn.addEventListener('click', () => {
     const printWin = window.open('', '_blank');
     printWin.document.write(`

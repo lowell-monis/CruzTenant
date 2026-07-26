@@ -145,9 +145,9 @@ body {
 .stat-dot.blue { background-color: var(--primary); }
 .stat-dot.purple { background-color: var(--accent); }
 
-/* Hero & Guide Banner */
+/* Hero Section */
 .hero-section {
-  padding: 36px 0 20px;
+  padding: 32px 0 20px;
   text-align: center;
 }
 
@@ -155,7 +155,7 @@ body {
   font-size: 2.8rem;
   font-weight: 800;
   line-height: 1.2;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .text-gradient {
@@ -164,65 +164,190 @@ body {
   -webkit-text-fill-color: transparent;
 }
 
-.hero-subtitle {
+.hero-tagline {
   font-size: 1.05rem;
   color: var(--text-muted);
   max-width: 720px;
   margin: 0 auto 20px;
+  font-weight: 500;
 }
 
-/* User Guide Step Banner */
-.guide-banner {
+/* Tabbed Info Cards */
+.info-tabs-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 20px;
+  backdrop-filter: blur(16px);
+  margin-bottom: 24px;
+  text-align: left;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.tab-buttons {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+}
+
+.tab-btn.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* Overview Tab Grid */
+.overview-grid {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
-  background: rgba(18, 24, 38, 0.6);
-  border: 1px solid var(--border-color);
-  border-radius: 14px;
-  padding: 16px;
-  margin-bottom: 20px;
-  text-align: left;
 }
 
 @media (max-width: 800px) {
-  .guide-banner { grid-template-columns: 1fr; }
+  .overview-grid { grid-template-columns: 1fr; }
 }
 
-.guide-step {
+.overview-card {
+  background: rgba(10, 13, 20, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
   display: flex;
-  align-items: flex-start;
   gap: 12px;
+  align-items: flex-start;
 }
 
-.guide-num {
-  background: rgba(56, 189, 248, 0.15);
-  border: 1px solid var(--primary);
-  color: var(--primary);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.78rem;
-  font-weight: 700;
-  flex-shrink: 0;
-  margin-top: 2px;
+.overview-icon {
+  font-size: 1.5rem;
+  line-height: 1;
 }
 
-.guide-step strong {
-  display: block;
-  font-size: 0.86rem;
+.overview-card h4 {
+  font-size: 0.92rem;
   color: var(--text-main);
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
-.guide-step p {
-  font-size: 0.8rem;
+.overview-card p {
+  font-size: 0.82rem;
   color: var(--text-muted);
-  line-height: 1.3;
+  line-height: 1.35;
 }
 
+/* Guide Steps Grid */
+.guide-steps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .guide-steps-grid { grid-template-columns: 1fr; }
+}
+
+.step-card {
+  background: rgba(10, 13, 20, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.step-badge {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--primary);
+  border: 1px solid var(--primary);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.step-card h4 {
+  font-size: 0.92rem;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.step-card p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Laws Tab Grid */
+.laws-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .laws-grid { grid-template-columns: 1fr; }
+}
+
+.law-box {
+  background: rgba(10, 13, 20, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.law-tag {
+  display: inline-block;
+  background: rgba(129, 140, 248, 0.15);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.law-box h4 {
+  font-size: 0.92rem;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.law-box p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+/* Sample Cases Bar */
 .sample-cases-bar {
   display: flex;
   align-items: center;
@@ -266,7 +391,7 @@ body {
   color: var(--primary);
 }
 
-/* Cards & Grid */
+/* Workspace Grid & Cards */
 .workspace-grid {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
@@ -322,7 +447,6 @@ body {
   color: var(--text-dim);
 }
 
-/* Form Subtext & Badges */
 .input-subtext {
   display: flex;
   justify-content: space-between;
@@ -383,45 +507,6 @@ textarea {
 input:focus, textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
-}
-
-/* Terminology Helper */
-.terms-helper {
-  margin-top: 18px;
-  border-top: 1px solid var(--border-color);
-  padding-top: 14px;
-}
-
-.terms-helper h5 {
-  font-size: 0.84rem;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.terms-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.term-item {
-  background: rgba(10, 13, 20, 0.4);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.78rem;
-}
-
-.term-item strong {
-  color: var(--primary);
-  display: block;
-  margin-bottom: 2px;
-}
-
-.term-item p {
-  color: var(--text-dim);
-  line-height: 1.2;
 }
 
 /* Buttons */

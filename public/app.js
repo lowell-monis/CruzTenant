@@ -24,6 +24,24 @@ document.addEventListener('DOMContentLoaded', () => {
   const disputeLetterBox = document.getElementById('disputeLetterBox');
   const printLetterBtn = document.getElementById('printLetterBtn');
 
+  // Info Tab Switching Logic
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabPanels = document.querySelectorAll('.tab-panel');
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-tab');
+      tabBtns.forEach(b => b.classList.remove('active'));
+      tabPanels.forEach(p => p.classList.remove('active'));
+
+      btn.classList.add('active');
+      const targetPanel = document.getElementById(targetId);
+      if (targetPanel) {
+        targetPanel.classList.add('active');
+      }
+    });
+  });
+
   let sampleCases = [];
 
   fetch('/api/sample-cases')
@@ -135,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
       analyzeBtn.disabled = false;
       analyzeBtn.innerHTML = `
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        analyze with Gemma 4
+        analyze document
       `;
 
       if (data.status === 'success') {
@@ -148,7 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(err => {
       console.error('analysis error:', err);
       analyzeBtn.disabled = false;
-      analyzeBtn.innerHTML = 'analyze with Gemma 4';
+      analyzeBtn.innerHTML = 'analyze document';
       alert('failed to connect to server.');
     });
   });

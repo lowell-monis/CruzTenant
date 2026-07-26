@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CruzTenant — eviction protection and lease analyzer</title>
-  <meta name="description" content="Tenant rights assistant protecting Santa Cruz renters from unlawful rent increases, illegal eviction notices, and excessive security deposits.">
+  <meta name="description" content="Automated lease auditor and formal dispute letter generator for Santa Cruz renters.">
   <link rel="stylesheet" href="/public/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -52,34 +52,90 @@
     <div class="container">
       <div class="hero-content">
         <h1 class="hero-title"><span class="text-gradient">CruzTenant</span></h1>
-        <p class="hero-subtitle">automated lease and eviction notice analyzer for Santa Cruz renters, student commuters, and community advocates.</p>
+        <p class="hero-tagline">automated legal lease auditor and formal dispute letter generator</p>
       </div>
 
-      <!-- how to use guide -->
-      <div class="guide-banner">
-        <div class="guide-step">
-          <span class="guide-num">1</span>
-          <div>
-            <strong>select or paste</strong>
-            <p>choose a sample scenario below or paste your rent hike letter, lease clause, or eviction notice.</p>
-          </div>
+      <!-- tabbed info box -->
+      <div class="info-tabs-card">
+        <div class="tab-buttons">
+          <button class="tab-btn active" data-tab="tab-overview">What is CruzTenant?</button>
+          <button class="tab-btn" data-tab="tab-guide">How to Use</button>
+          <button class="tab-btn" data-tab="tab-laws">Santa Cruz Legal Codes</button>
         </div>
-        <div class="guide-step">
-          <span class="guide-num">2</span>
-          <div>
-            <strong>run analysis</strong>
-            <p>evaluate terms against Santa Cruz Municipal Code (Ch. 21.03/21.04) and California statutes.</p>
+
+        <div class="tab-content-container">
+          <!-- Tab 1: Overview -->
+          <div class="tab-panel active" id="tab-overview">
+            <div class="overview-grid">
+              <div class="overview-card">
+                <div class="overview-icon">⚖️</div>
+                <div>
+                  <h4>1. Lease & Notice Auditor</h4>
+                  <p>evaluates rent increase notices, eviction letters, and lease clauses for statutory violations under Santa Cruz Municipal Code.</p>
+                </div>
+              </div>
+              <div class="overview-card">
+                <div class="overview-icon">📊</div>
+                <div>
+                  <h4>2. Rent Cap Calculator</h4>
+                  <p>calculates exact allowable rent increase limits using live Santa Cruz CPI data (8.8% max cap) and security deposit ceilings.</p>
+                </div>
+              </div>
+              <div class="overview-card">
+                <div class="overview-icon">📄</div>
+                <div>
+                  <h4>3. Dispute Letter Generator</h4>
+                  <p>generates ready-to-file formal legal dispute notices for landlords and links tenants directly to local Santa Cruz legal aid.</p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="guide-step">
-          <span class="guide-num">3</span>
-          <div>
-            <strong>export dispute letter</strong>
-            <p>review statutory violations and generate a formal, printable dispute notice for your landlord.</p>
+
+          <!-- Tab 2: How to Use -->
+          <div class="tab-panel" id="tab-guide">
+            <div class="guide-steps-grid">
+              <div class="step-card">
+                <span class="step-badge">Step 1</span>
+                <h4>select or paste</h4>
+                <p>click a pre-loaded sample scenario below or paste your lease clause, rent hike notice, or eviction document.</p>
+              </div>
+              <div class="step-card">
+                <span class="step-badge">Step 2</span>
+                <h4>run analysis</h4>
+                <p>click "analyze document" to execute function tools against Santa Cruz Municipal Code Chapters 21.03 & 21.04.</p>
+              </div>
+              <div class="step-card">
+                <span class="step-badge">Step 3</span>
+                <h4>export dispute letter</h4>
+                <p>review identified violations and click "print / export letter" to generate a formal notice for your landlord.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Legal Codes -->
+          <div class="tab-panel" id="tab-laws">
+            <div class="laws-grid">
+              <div class="law-box">
+                <span class="law-tag">SC Municipal Code Ch. 21.04</span>
+                <h4>Rent Stabilization & 8.8% Cap</h4>
+                <p>caps annual rent increases to 5% base + local CPI (3.8% for Santa Cruz Metro). Increases exceeding 10% require 90 days written notice.</p>
+              </div>
+              <div class="law-box">
+                <span class="law-tag">SC Municipal Code Ch. 21.03</span>
+                <h4>Just Cause Evictions & Relocation</h4>
+                <p>requires legally valid reasons to terminate tenancies of 12+ months. Mandatory relocation assistance (2 months rent or $3,000 min) required for no-fault evictions.</p>
+              </div>
+              <div class="law-box">
+                <span class="law-tag">California Civil Code § 1950.5 (AB 12)</span>
+                <h4>Security Deposit Ceiling</h4>
+                <p>restricts residential security deposits to a maximum of 1.0x monthly rent starting July 1, 2024.</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
+      <!-- sample scenarios bar -->
       <div class="sample-cases-bar">
         <span class="sample-label">⚡ test sample Santa Cruz scenarios:</span>
         <div class="sample-pills" id="samplePills"></div>
@@ -163,25 +219,6 @@
             <div class="calc-row highlighted">
               <span>monthly excess overcharge:</span>
               <strong id="resExcessMonthly" class="text-warning">$253.60 / mo</strong>
-            </div>
-          </div>
-        </div>
-
-        <!-- terminology helper -->
-        <div class="terms-helper">
-          <h5>Santa Cruz tenant protections reference</h5>
-          <div class="terms-grid">
-            <div class="term-item">
-              <strong>AB 1482 (8.8% Cap)</strong>
-              <p>limits annual rent increases to 5% base + local CPI (3.8% for Santa Cruz Metro).</p>
-            </div>
-            <div class="term-item">
-              <strong>AB 12 Deposit Limit</strong>
-              <p>restricts security deposits to a maximum of 1 month rent starting July 2024.</p>
-            </div>
-            <div class="term-item">
-              <strong>SC Code 21.03 Just Cause</strong>
-              <p>requires valid reasons to terminate tenancies of 12+ months and mandatory relocation for no-fault evictions.</p>
             </div>
           </div>
         </div>

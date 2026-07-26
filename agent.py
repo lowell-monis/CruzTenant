@@ -11,6 +11,25 @@ import urllib.parse
 from typing import Dict, Any, List, Optional
 import santa_cruz_legal_db as sc_db
 
+def load_env_file():
+    """automatically loads environment variables from .env if present."""
+    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    if os.path.exists(env_path):
+        try:
+            with open(env_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        key = k.strip()
+                        val = v.strip().strip('"').strip("'")
+                        if key and val and key not in os.environ:
+                            os.environ[key] = val
+        except Exception:
+            pass
+
+load_env_file()
+
 GEMMA_TOOL_DECLARATIONS = [
     {
         "name": "calculate_max_allowed_rent_increase",
@@ -125,6 +144,7 @@ class GemmaAgentEngine:
     """Gemma 4 function-calling engine for tenant lease analysis and legal aid recommendations."""
     
     def __init__(self, api_key: Optional[str] = None):
+        load_env_file()
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GEMMA_API_KEY")
         
     def execute_tool(self, tool_name: str, tool_args: Dict[str, Any]) -> Dict[str, Any]:
@@ -160,26 +180,55 @@ class GemmaAgentEngine:
         else:
             return {"status": "error", "message": f"unknown tool: {tool_name}"}
 
+    def call_live_gemini_api(self, prompt: str) -> Optional[Dict[str, Any]]:
+        """makes a live HTTP request to Gemini/Gemma API using GEMINI_API_KEY."""
+        if not self.api_key or self.api_key == "your_gemini_api_key_here":
+            return None
+            
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={self.api_key}"
+        payload = {
+            "contents": [
+                {"role": "user", "parts": [{"text": prompt}]}
+            ],
+            "generationConfig": {"temperature": 0.2}
+        }
+        
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode('utf-8'),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=12) as response:
+                if response.status == 200:
+                    resp_body = response.read().decode('utf-8')
+                    return json.loads(resp_body)
+        except Exception:
+            return None
+        return None
+
     def analyze_scenario(self, tenant_text: str, tenant_name: str = "Jane Doe", landlord_name: str = "Property Mgmt Co") -> Dict[str, Any]:
         """performs analysis via live API or returns explicit rate-limit error + legal aid fallback."""
         
-        # Check API key / Live API connection
-        if not self.api_key:
+        load_env_file()
+        current_key = self.api_key or os.environ.get("GEMINI_API_KEY")
+        
+        if not current_key or current_key == "your_gemini_api_key_here":
             return {
                 "status": "error",
                 "tenant_name": tenant_name,
                 "landlord_name": landlord_name,
                 "is_illegal": False,
                 "violations_count": 0,
-                "violations": ["API rate limit reached or missing API key. Live AI document analysis is currently unavailable."],
+                "violations": ["API rate limit reached or missing GEMINI_API_KEY. Live AI document analysis is currently unavailable."],
                 "recommendations": ["consult verified Santa Cruz legal aid resources below for human legal advice."],
                 "agent_trace": [{
                     "step": 1,
                     "type": "thought",
                     "title": "API rate limit / connection status",
-                    "content": "live AI API unavailable. returning verified Santa Cruz legal aid contacts as fallback."
+                    "content": "live AI API unavailable. please add your API key to .env file."
                 }],
-                "dispute_letter": "ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.",
+                "dispute_letter": "ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. Please add your GEMINI_API_KEY to the .env file.",
                 "legal_aid_resources": sc_db.SANTA_CRUZ_LEGAL_AID_RESOURCES
             }
 

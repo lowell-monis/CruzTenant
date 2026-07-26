@@ -1,7 +1,6 @@
-# CruzTenant — Autonomous Santa Cruz Tenant Rights & Lease Auditor
+# CruzTenant :: Autonomous Santa Cruz Lease Auditor
+### Built for Build with Gemma: Cruz Into The Gemmaverse!
 
-**Built for CruzHacks: Build with Gemma: Cruz Into The Gemmaverse!**  
-**Track:** Track 1 — Autonomous Agent Track  
 **Developer:** Lowell Monis  
 **Project Repository:** [https://github.com/lowell-monis/CruzTenant](https://github.com/lowell-monis/CruzTenant)  
 **Live Demo:** [https://lowell-monis.github.io/CruzTenant](https://lowell-monis.github.io/CruzTenant)  

@@ -36,59 +36,6 @@ When an audit is performed, CruzTenant matches the tenant's specific situation t
 
 ---
 
-## 🚀 Environment Setup & Local Execution
-
-### Running with `uv` (Synced & Lockfile Ready)
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/lowell-monis/CruzTenant.git
-   cd CruzTenant
-   ```
-2. Sync virtual environment using `uv`:
-   ```bash
-   uv sync
-   ```
-3. Run the application:
-   ```bash
-   uv run python server.py
-   ```
-4. Open **[http://localhost:8000](http://localhost:8000)** in your browser.
-
-### Standard Python Setup (Local Fallback)
-1. Install Python 3.9+:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-2. Create a `.env` file in the project root:
-   ```env
-   GEMINI_API_KEY=your_google_ai_studio_api_key_here
-   ```
-3. Start the server:
-   ```bash
-   python server.py
-   ```
-4. Open **[http://localhost:8000](http://localhost:8000)**.
-
----
-
-## 🌐 GitHub Deployment Instructions
-
-### 1. Push to GitHub
-Initialize and push your local repository to your GitHub account:
-```bash
-git remote add origin https://github.com/lowell-monis/CruzTenant.git
-git branch -M main
-git push -u origin main
-```
-
-### 2. Enable GitHub Pages Deployment
-1. Go to your repository settings on GitHub: **Settings > Pages**.
-2. Under **Build and deployment > Source**, select **GitHub Actions**.
-3. The included GitHub Actions workflow (`.github/workflows/deploy.yml`) will automatically deploy the static frontend to **`https://lowell-monis.github.io/CruzTenant`** on every push to `main`!
-
----
-
 ## ⚖️ Legal Disclaimer & Trademark Attribution
 > **LEGAL DISCLAIMER:** CruzTenant is an automated AI educational tool built by Lowell Monis for CruzHacks and powered by Gemma 4. It is not a substitute for formal legal representation or advice. For official legal counsel or litigation defense, please consult a licensed attorney or a verified Santa Cruz legal aid organization listed in the application.
 

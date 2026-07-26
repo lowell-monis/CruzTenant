@@ -164,13 +164,44 @@ document.addEventListener('DOMContentLoaded', () => {
     .catch(err => {
       console.error('analysis error:', err);
       analyzeBtn.disabled = false;
-      analyzeBtn.innerHTML = 'analyze document';
+      analyzeBtn.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        analyze document
+      `;
       
-      // Fallback UI rendering if network fails completely
-      resultsSection.style.display = 'block';
-      statusBanner.className = 'status-banner illegal';
-      statusBanner.innerHTML = '⚠️ API rate limit or network error: Live AI analysis unavailable. Please consult verified Santa Cruz legal aid resources below.';
-      disputeLetterBox.textContent = 'ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.';
+      renderAnalysisResults({
+        status: 'error',
+        message: 'API rate limit or network error: Live AI analysis unavailable. Please consult verified Santa Cruz legal aid resources below.',
+        violations: ['ERROR: Live AI document analysis unavailable due to API rate limit or missing API key.'],
+        recommendations: ['consult verified Santa Cruz legal aid resources below for human legal advice.'],
+        dispute_letter: 'ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.',
+        legal_aid_resources: [
+          {
+            name: "Senior Citizens Legal Services - Santa Cruz",
+            address: "501 Soquel Ave, Suite F, Santa Cruz, CA 95062",
+            phone: "(831) 426-8824",
+            services: ["eviction defense", "rent increase disputes", "housing discrimination"]
+          },
+          {
+            name: "California Rural Legal Assistance (CRLA) - Watsonville/Santa Cruz",
+            address: "21 Carr St, Watsonville, CA 95076",
+            phone: "(831) 724-2253",
+            services: ["tenant rights", "substandard housing litigation", "unlawful detainer defense"]
+          },
+          {
+            name: "Conflict Resolution Center of Santa Cruz County",
+            address: "147 S River St, Suite 206, Santa Cruz, CA 95060",
+            phone: "(831) 475-6117",
+            services: ["landlord-tenant mediation", "rent dispute settlement"]
+          },
+          {
+            name: "Santa Cruz County Law Library Tenant Self-Help",
+            address: "701 Ocean Street, Room 080, Santa Cruz, CA 95060",
+            phone: "(831) 457-2525",
+            services: ["legal form filing", "tenant answer assistance", "municipal code research"]
+          }
+        ]
+      });
     });
   });
 
@@ -209,29 +240,43 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.status === 'error') {
       statusBanner.className = 'status-banner illegal';
       statusBanner.innerHTML = `⚠️ ${data.message || 'API rate limit reached. Live AI analysis is currently unavailable.'}`;
+      
+      violationsList.innerHTML = '<div class="violation-card" style="border-left-color: var(--warning); background: rgba(245, 158, 11, 0.08);">ERROR: Live AI analysis unavailable due to API rate limit or missing API key.</div>';
+      
+      recommendationsList.innerHTML = '<div class="recommendation-card">consult verified Santa Cruz legal aid resources below for human legal advice.</div>';
+      
+      disputeLetterBox.textContent = data.dispute_letter || 'ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.';
     } else if (data.is_illegal) {
       statusBanner.className = 'status-banner illegal';
       statusBanner.innerHTML = `⚠️ statutory violation detected: identified ${data.violations_count} unlawful terms under Santa Cruz Municipal Code or California law.`;
+      
+      violationsList.innerHTML = '';
+      (data.violations || []).forEach(v => {
+        const div = document.createElement('div');
+        div.className = 'violation-card';
+        div.textContent = v;
+        violationsList.appendChild(div);
+      });
+
+      recommendationsList.innerHTML = '';
+      (data.recommendations || []).forEach(r => {
+        const div = document.createElement('div');
+        div.className = 'recommendation-card';
+        div.textContent = r;
+        recommendationsList.appendChild(div);
+      });
+
+      disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
     } else {
       statusBanner.className = 'status-banner legal';
       statusBanner.innerHTML = `✅ compliant notice: no statutory violations detected. terms comply with Santa Cruz cap rules.`;
+      
+      violationsList.innerHTML = '<div class="violation-card" style="border-left-color: var(--success); background: rgba(52, 211, 153, 0.08);">no statutory violations detected in submitted text.</div>';
+      
+      recommendationsList.innerHTML = '<div class="recommendation-card">retain all written communications and verify notice service dates.</div>';
+      
+      disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
     }
-
-    violationsList.innerHTML = '';
-    (data.violations || []).forEach(v => {
-      const div = document.createElement('div');
-      div.className = 'violation-card';
-      div.textContent = v;
-      violationsList.appendChild(div);
-    });
-
-    recommendationsList.innerHTML = '';
-    (data.recommendations || []).forEach(r => {
-      const div = document.createElement('div');
-      div.className = 'recommendation-card';
-      div.textContent = r;
-      recommendationsList.appendChild(div);
-    });
 
     legalAidList.innerHTML = '';
     (data.legal_aid_resources || []).forEach(aid => {
@@ -245,7 +290,6 @@ document.addEventListener('DOMContentLoaded', () => {
       legalAidList.appendChild(div);
     });
 
-    disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
     resultsSection.scrollIntoView({ behavior: 'smooth' });
   }
 

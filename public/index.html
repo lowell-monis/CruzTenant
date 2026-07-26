@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CruzTenant — eviction protection and lease analyzer</title>
-  <meta name="description" content="Gemma 4 agent protecting Santa Cruz renters from unlawful rent increases, illegal eviction notices, and excessive security deposits.">
+  <meta name="description" content="Tenant rights assistant protecting Santa Cruz renters from unlawful rent increases, illegal eviction notices, and excessive security deposits.">
   <link rel="stylesheet" href="/public/styles.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,19 +27,19 @@
         </div>
         <div class="brand-text">
           <span class="brand-title">CruzTenant</span>
-          <span class="brand-badge">Gemma 4 agent</span>
+          <span class="brand-badge">Santa Cruz housing protection</span>
         </div>
       </div>
       <div class="header-stats">
-        <div class="stat-chip">
+        <div class="stat-chip" title="Consumer Price Index for Santa Cruz metro area">
           <span class="stat-dot green"></span>
-          <span>Santa Cruz Metro CPI: <strong>3.8%</strong></span>
+          <span>Santa Cruz CPI: <strong>3.8%</strong></span>
         </div>
-        <div class="stat-chip">
+        <div class="stat-chip" title="Maximum annual rent increase allowed under California AB 1482 (5% base + 3.8% CPI)">
           <span class="stat-dot blue"></span>
           <span>AB 1482 rent cap: <strong>8.8%</strong></span>
         </div>
-        <div class="stat-chip">
+        <div class="stat-chip" title="Maximum security deposit allowed under California AB 12">
           <span class="stat-dot purple"></span>
           <span>AB 12 deposit limit: <strong>1.0x rent</strong></span>
         </div>
@@ -51,12 +51,37 @@
   <section class="hero-section">
     <div class="container">
       <div class="hero-content">
-        <h1 class="hero-title">protecting Santa Cruz renters with <span class="text-gradient">Gemma 4</span></h1>
-        <p class="hero-subtitle">analyze lease clauses, rent increase notices, and eviction threats against Santa Cruz Municipal Code (Ch. 21.03/21.04) and California statutes.</p>
+        <h1 class="hero-title"><span class="text-gradient">CruzTenant</span></h1>
+        <p class="hero-subtitle">automated lease and eviction notice analyzer for Santa Cruz renters, student commuters, and community advocates.</p>
+      </div>
+
+      <!-- how to use guide -->
+      <div class="guide-banner">
+        <div class="guide-step">
+          <span class="guide-num">1</span>
+          <div>
+            <strong>select or paste</strong>
+            <p>choose a sample scenario below or paste your rent hike letter, lease clause, or eviction notice.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <span class="guide-num">2</span>
+          <div>
+            <strong>run analysis</strong>
+            <p>evaluate terms against Santa Cruz Municipal Code (Ch. 21.03/21.04) and California statutes.</p>
+          </div>
+        </div>
+        <div class="guide-step">
+          <span class="guide-num">3</span>
+          <div>
+            <strong>export dispute letter</strong>
+            <p>review statutory violations and generate a formal, printable dispute notice for your landlord.</p>
+          </div>
+        </div>
       </div>
 
       <div class="sample-cases-bar">
-        <span class="sample-label">⚡ test Santa Cruz scenarios:</span>
+        <span class="sample-label">⚡ test sample Santa Cruz scenarios:</span>
         <div class="sample-pills" id="samplePills"></div>
       </div>
     </div>
@@ -71,9 +96,9 @@
         <div class="panel-header">
           <div class="panel-title-wrap">
             <div class="step-number">1</div>
-            <h3>lease or notice analysis</h3>
+            <h3>lease or notice input</h3>
           </div>
-          <span class="panel-hint">paste lease clause or notice</span>
+          <span class="panel-hint">paste document or select sample case above</span>
         </div>
 
         <div class="form-grid">
@@ -88,13 +113,17 @@
           <div class="form-group full">
             <label for="inputText">lease text or notice content</label>
             <textarea id="inputText" rows="6" placeholder="paste rent increase notice, eviction letter, or security deposit demand..."></textarea>
+            <div class="input-subtext">
+              <span class="badge-gemma">powered by Gemma 4 function calling engine</span>
+              <span>Santa Cruz County jurisdiction (95060, 95062, 95076)</span>
+            </div>
           </div>
         </div>
 
         <div class="panel-actions">
           <button id="analyzeBtn" class="btn btn-primary btn-glow">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            analyze with Gemma 4
+            analyze document
           </button>
           <button id="clearBtn" class="btn btn-secondary">clear input</button>
         </div>
@@ -137,16 +166,35 @@
             </div>
           </div>
         </div>
+
+        <!-- terminology helper -->
+        <div class="terms-helper">
+          <h5>Santa Cruz tenant protections reference</h5>
+          <div class="terms-grid">
+            <div class="term-item">
+              <strong>AB 1482 (8.8% Cap)</strong>
+              <p>limits annual rent increases to 5% base + local CPI (3.8% for Santa Cruz Metro).</p>
+            </div>
+            <div class="term-item">
+              <strong>AB 12 Deposit Limit</strong>
+              <p>restricts security deposits to a maximum of 1 month rent starting July 2024.</p>
+            </div>
+            <div class="term-item">
+              <strong>SC Code 21.03 Just Cause</strong>
+              <p>requires valid reasons to terminate tenancies of 12+ months and mandatory relocation for no-fault evictions.</p>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>
 
-    <!-- tool trace -->
+    <!-- execution trace -->
     <div class="panel card glass-panel agent-trace-panel" id="agentTraceSection" style="display: none;">
       <div class="panel-header">
         <div class="panel-title-wrap">
           <div class="pulse-indicator"></div>
-          <h3>Gemma 4 tool execution trace</h3>
+          <h3>function execution trace</h3>
         </div>
         <span class="badge badge-success" id="agentStatusBadge">5 tools executed</span>
       </div>
@@ -188,7 +236,7 @@
 
   <footer class="app-footer">
     <div class="container footer-content">
-      <p>built for the <strong>Build with Gemma: Cruz Into The Gemmaverse!</strong> Kaggle Hackathon | Track 1</p>
+      <p>built for CruzHacks Build with Gemma: Cruz Into The Gemmaverse! | Track 1: Autonomous Agent Track</p>
       <p class="footer-sub">grounded in Santa Cruz Municipal Code Chapters 21.03 & 21.04, CA AB 1482 & California AB 12.</p>
     </div>
   </footer>

@@ -87,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let sampleCases = STATIC_SAMPLE_CASES;
 
+  // Render sample pills immediately on load
+  renderSamplePills();
+
+  // Try API fetch for dynamic server scenarios if available
   fetch('/api/sample-cases')
     .then(res => {
       if (!res.ok) throw new Error('API endpoint unavailable on static server');
@@ -95,16 +99,13 @@ document.addEventListener('DOMContentLoaded', () => {
     .then(data => {
       if (data.status === 'success' && data.cases && data.cases.length > 0) {
         sampleCases = data.cases;
+        renderSamplePills();
       }
-      renderSamplePills();
     })
-    .catch(err => {
-      console.log('static deployment mode: using embedded sample cases');
-      sampleCases = STATIC_SAMPLE_CASES;
-      renderSamplePills();
-    });
+    .catch(err => console.log('static deployment mode: using embedded sample cases'));
 
   function renderSamplePills() {
+    if (!samplePills) return;
     samplePills.innerHTML = '';
     sampleCases.forEach((c, index) => {
       const pill = document.createElement('button');
@@ -125,21 +126,22 @@ document.addEventListener('DOMContentLoaded', () => {
       activePill.classList.add('active');
     }
 
-    tenantNameInput.value = c.tenant_name || 'Alex Rivera';
-    landlordNameInput.value = c.landlord_name || 'Bayshore Coastal Rental Mgmt';
-    inputTextarea.value = c.input_text;
+    if (tenantNameInput) tenantNameInput.value = c.tenant_name || 'Alex Rivera';
+    if (landlordNameInput) landlordNameInput.value = c.landlord_name || 'Bayshore Coastal Rental Mgmt';
+    if (inputTextarea) inputTextarea.value = c.input_text;
     
     if (c.id === 'case_1') {
-      calcCurrentRent.value = 2800;
-      calcProposedRent.value = 3304;
+      if (calcCurrentRent) calcCurrentRent.value = 2800;
+      if (calcProposedRent) calcProposedRent.value = 3304;
     } else if (c.id === 'case_3') {
-      calcCurrentRent.value = 2800;
-      calcProposedRent.value = 2800;
+      if (calcCurrentRent) calcCurrentRent.value = 2800;
+      if (calcProposedRent) calcProposedRent.value = 2800;
     }
     updateRentCalculator();
   }
 
   function updateRentCalculator() {
+    if (!calcCurrentRent || !calcProposedRent) return;
     const curr = parseFloat(calcCurrentRent.value) || 0;
     const prop = parseFloat(calcProposedRent.value) || 0;
     
@@ -149,115 +151,131 @@ document.addEventListener('DOMContentLoaded', () => {
     const maxLegalRent = curr * (1 + 0.088);
     const excessMonthly = Math.max(0, prop - maxLegalRent);
     
-    resIncreasePct.textContent = `${pct.toFixed(2)}%`;
-    resIncreasePct.className = pct > 8.8 ? 'text-danger' : 'text-success';
+    if (resIncreasePct) {
+      resIncreasePct.textContent = `${pct.toFixed(2)}%`;
+      resIncreasePct.className = pct > 8.8 ? 'text-danger' : 'text-success';
+    }
     
-    resMaxLegalRent.textContent = `$${maxLegalRent.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (resMaxLegalRent) {
+      resMaxLegalRent.textContent = `$${maxLegalRent.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
     
-    if (excessMonthly > 0) {
-      resExcessMonthly.textContent = `$${excessMonthly.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} / mo`;
-      resExcessMonthly.className = 'text-warning';
-    } else {
-      resExcessMonthly.textContent = '$0.00 (within cap)';
-      resExcessMonthly.className = 'text-success';
+    if (resExcessMonthly) {
+      if (excessMonthly > 0) {
+        resExcessMonthly.textContent = `$${excessMonthly.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})} / mo`;
+        resExcessMonthly.className = 'text-warning';
+      } else {
+        resExcessMonthly.textContent = '$0.00 (within cap)';
+        resExcessMonthly.className = 'text-success';
+      }
     }
   }
 
-  calcCurrentRent.addEventListener('input', updateRentCalculator);
-  calcProposedRent.addEventListener('input', updateRentCalculator);
+  if (calcCurrentRent) calcCurrentRent.addEventListener('input', updateRentCalculator);
+  if (calcProposedRent) calcProposedRent.addEventListener('input', updateRentCalculator);
 
-  clearBtn.addEventListener('click', () => {
-    inputTextarea.value = '';
-    agentTraceSection.style.display = 'none';
-    resultsSection.style.display = 'none';
-  });
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      if (inputTextarea) inputTextarea.value = '';
+      if (agentTraceSection) agentTraceSection.style.display = 'none';
+      if (resultsSection) resultsSection.style.display = 'none';
+    });
+  }
 
-  analyzeBtn.addEventListener('click', () => {
-    const text = inputTextarea.value.trim();
-    if (!text) {
-      alert('please enter lease text or select a sample case.');
-      return;
-    }
-
-    analyzeBtn.disabled = true;
-    analyzeBtn.innerHTML = `
-      <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
-      running Gemma 4...
-    `;
-
-    agentTraceSection.style.display = 'block';
-    resultsSection.style.display = 'none';
-    timelineContainer.innerHTML = '<div class="timeline-item"><span class="step-icon">Step 1</span><div class="step-content"><h5>initializing Gemma 4 tool engine...</h5><p>parsing text for Santa Cruz legal compliance...</p></div></div>';
-
-    fetch('/api/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: text,
-        tenant_name: tenantNameInput.value || 'Jane Doe',
-        landlord_name: landlordNameInput.value || 'Bayshore Coastal Rental Mgmt'
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      analyzeBtn.disabled = false;
-      analyzeBtn.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        analyze document
-      `;
-
-      if (data.agent_trace) {
-        renderAgentTrace(data.agent_trace);
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', () => {
+      const text = inputTextarea ? inputTextarea.value.trim() : '';
+      if (!text) {
+        alert('please enter lease text or select a sample case.');
+        return;
       }
-      renderAnalysisResults(data);
-    })
-    .catch(err => {
-      console.error('analysis error:', err);
-      analyzeBtn.disabled = false;
+
+      analyzeBtn.disabled = true;
       analyzeBtn.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        analyze document
+        <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+        running Gemma 4...
       `;
-      
-      renderAnalysisResults({
-        status: 'error',
-        message: 'API rate limit or network error: Live AI analysis unavailable. Please consult verified Santa Cruz legal aid resources below.',
-        violations: ['ERROR: Live AI document analysis unavailable due to API rate limit or missing API key.'],
-        recommendations: ['consult verified Santa Cruz legal aid resources below for human legal advice.'],
-        dispute_letter: 'ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.',
-        legal_aid_resources: [
-          {
-            name: "Senior Citizens Legal Services - Santa Cruz",
-            address: "501 Soquel Ave, Suite F, Santa Cruz, CA 95062",
-            phone: "(831) 426-8824",
-            services: ["eviction defense", "rent increase disputes", "housing discrimination"]
-          },
-          {
-            name: "California Rural Legal Assistance (CRLA) - Watsonville/Santa Cruz",
-            address: "21 Carr St, Watsonville, CA 95076",
-            phone: "(831) 724-2253",
-            services: ["tenant rights", "substandard housing litigation", "unlawful detainer defense"]
-          },
-          {
-            name: "Conflict Resolution Center of Santa Cruz County",
-            address: "147 S River St, Suite 206, Santa Cruz, CA 95060",
-            phone: "(831) 475-6117",
-            services: ["landlord-tenant mediation", "rent dispute settlement"]
-          },
-          {
-            name: "Santa Cruz County Law Library Tenant Self-Help",
-            address: "701 Ocean Street, Room 080, Santa Cruz, CA 95060",
-            phone: "(831) 457-2525",
-            services: ["legal form filing", "tenant answer assistance", "municipal code research"]
-          }
-        ]
+
+      if (agentTraceSection) agentTraceSection.style.display = 'block';
+      if (resultsSection) resultsSection.style.display = 'none';
+      if (timelineContainer) {
+        timelineContainer.innerHTML = '<div class="timeline-item"><span class="step-icon">Step 1</span><div class="step-content"><h5>initializing Gemma 4 tool engine...</h5><p>parsing text for Santa Cruz legal compliance...</p></div></div>';
+      }
+
+      fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: text,
+          tenant_name: tenantNameInput ? tenantNameInput.value : 'Jane Doe',
+          landlord_name: landlordNameInput ? landlordNameInput.value : 'Bayshore Coastal Rental Mgmt'
+        })
+      })
+      .then(res => {
+        if (!res.ok) throw new Error('API server unavailable on static deployment');
+        return res.json();
+      })
+      .then(data => {
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          analyze document
+        `;
+
+        if (data.agent_trace) {
+          renderAgentTrace(data.agent_trace);
+        }
+        renderAnalysisResults(data);
+      })
+      .catch(err => {
+        console.error('analysis error:', err);
+        analyzeBtn.disabled = false;
+        analyzeBtn.innerHTML = `
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          analyze document
+        `;
+        
+        renderAnalysisResults({
+          status: 'error',
+          message: 'API rate limit or static hosting mode: Live AI analysis unavailable. Please consult verified Santa Cruz legal aid resources below.',
+          violations: ['ERROR: Live AI document analysis unavailable on static host or due to API rate limit.'],
+          recommendations: ['consult verified Santa Cruz legal aid resources below for human legal advice.'],
+          dispute_letter: 'ERROR: Live AI document analysis unavailable on static host or due to API rate limit. No automated dispute letter will be generated.',
+          legal_aid_resources: [
+            {
+              name: "Senior Citizens Legal Services - Santa Cruz",
+              address: "501 Soquel Ave, Suite F, Santa Cruz, CA 95062",
+              phone: "(831) 426-8824",
+              services: ["eviction defense", "rent increase disputes", "housing discrimination"]
+            },
+            {
+              name: "California Rural Legal Assistance (CRLA) - Watsonville/Santa Cruz",
+              address: "21 Carr St, Watsonville, CA 95076",
+              phone: "(831) 724-2253",
+              services: ["tenant rights", "substandard housing litigation", "unlawful detainer defense"]
+            },
+            {
+              name: "Conflict Resolution Center of Santa Cruz County",
+              address: "147 S River St, Suite 206, Santa Cruz, CA 95060",
+              phone: "(831) 475-6117",
+              services: ["landlord-tenant mediation", "rent dispute settlement"]
+            },
+            {
+              name: "Santa Cruz County Law Library Tenant Self-Help",
+              address: "701 Ocean Street, Room 080, Santa Cruz, CA 95060",
+              phone: "(831) 457-2525",
+              services: ["legal form filing", "tenant answer assistance", "municipal code research"]
+            }
+          ]
+        });
       });
     });
-  });
+  }
 
   function renderAgentTrace(traceSteps) {
+    if (!timelineContainer) return;
     timelineContainer.innerHTML = '';
-    agentStatusBadge.textContent = `${traceSteps.length} trace steps`;
+    if (agentStatusBadge) agentStatusBadge.textContent = `${traceSteps.length} trace steps`;
 
     traceSteps.forEach((step, idx) => {
       const item = document.createElement('div');
@@ -285,81 +303,110 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function renderAnalysisResults(data) {
+    if (!resultsSection) return;
     resultsSection.style.display = 'block';
 
     if (data.status === 'error') {
-      statusBanner.className = 'status-banner illegal';
-      statusBanner.innerHTML = `⚠️ ${data.message || 'API rate limit reached. Live AI analysis is currently unavailable.'}`;
+      if (statusBanner) {
+        statusBanner.className = 'status-banner illegal';
+        statusBanner.innerHTML = `⚠️ ${data.message || 'API rate limit reached. Live AI analysis is currently unavailable.'}`;
+      }
       
-      violationsList.innerHTML = '<div class="violation-card" style="border-left-color: var(--warning); background: rgba(245, 158, 11, 0.08);">ERROR: Live AI analysis unavailable due to API rate limit or missing API key.</div>';
+      if (violationsList) {
+        violationsList.innerHTML = '<div class="violation-card" style="border-left-color: var(--warning); background: rgba(245, 158, 11, 0.08);">ERROR: Live AI analysis unavailable on static host or due to API rate limit.</div>';
+      }
       
-      recommendationsList.innerHTML = '<div class="recommendation-card">consult verified Santa Cruz legal aid resources below for human legal advice.</div>';
+      if (recommendationsList) {
+        recommendationsList.innerHTML = '<div class="recommendation-card">consult verified Santa Cruz legal aid resources below for human legal advice.</div>';
+      }
       
-      disputeLetterBox.textContent = data.dispute_letter || 'ERROR: Live AI document analysis unavailable due to API rate limit or missing API key. No automated dispute letter will be generated.';
+      if (disputeLetterBox) {
+        disputeLetterBox.textContent = data.dispute_letter || 'ERROR: Live AI document analysis unavailable on static host or due to API rate limit. No automated dispute letter will be generated.';
+      }
     } else if (data.is_illegal) {
-      statusBanner.className = 'status-banner illegal';
-      statusBanner.innerHTML = `⚠️ statutory violation detected: identified ${data.violations_count} unlawful terms under Santa Cruz Municipal Code or California law.`;
+      if (statusBanner) {
+        statusBanner.className = 'status-banner illegal';
+        statusBanner.innerHTML = `⚠️ statutory violation detected: identified ${data.violations_count} unlawful terms under Santa Cruz Municipal Code or California law.`;
+      }
       
-      violationsList.innerHTML = '';
-      (data.violations || []).forEach(v => {
-        const div = document.createElement('div');
-        div.className = 'violation-card';
-        div.textContent = v;
-        violationsList.appendChild(div);
-      });
+      if (violationsList) {
+        violationsList.innerHTML = '';
+        (data.violations || []).forEach(v => {
+          const div = document.createElement('div');
+          div.className = 'violation-card';
+          div.textContent = v;
+          violationsList.appendChild(div);
+        });
+      }
 
-      recommendationsList.innerHTML = '';
-      (data.recommendations || []).forEach(r => {
-        const div = document.createElement('div');
-        div.className = 'recommendation-card';
-        div.textContent = r;
-        recommendationsList.appendChild(div);
-      });
+      if (recommendationsList) {
+        recommendationsList.innerHTML = '';
+        (data.recommendations || []).forEach(r => {
+          const div = document.createElement('div');
+          div.className = 'recommendation-card';
+          div.textContent = r;
+          recommendationsList.appendChild(div);
+        });
+      }
 
-      disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
+      if (disputeLetterBox) {
+        disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
+      }
     } else {
-      statusBanner.className = 'status-banner legal';
-      statusBanner.innerHTML = `✅ compliant notice: no statutory violations detected. terms comply with Santa Cruz cap rules.`;
+      if (statusBanner) {
+        statusBanner.className = 'status-banner legal';
+        statusBanner.innerHTML = `✅ compliant notice: no statutory violations detected. terms comply with Santa Cruz cap rules.`;
+      }
       
-      violationsList.innerHTML = '<div class="violation-card" style="border-left-color: var(--success); background: rgba(52, 211, 153, 0.08);">no statutory violations detected in submitted text.</div>';
+      if (violationsList) {
+        violationsList.innerHTML = '<div class="violation-card" style="border-left-color: var(--success); background: rgba(52, 211, 153, 0.08);">no statutory violations detected in submitted text.</div>';
+      }
       
-      recommendationsList.innerHTML = '<div class="recommendation-card">retain all written communications and verify notice service dates.</div>';
+      if (recommendationsList) {
+        recommendationsList.innerHTML = '<div class="recommendation-card">retain all written communications and verify notice service dates.</div>';
+      }
       
-      disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
+      if (disputeLetterBox) {
+        disputeLetterBox.textContent = data.dispute_letter || 'No document generated.';
+      }
     }
 
-    legalAidList.innerHTML = '';
-    (data.legal_aid_resources || []).forEach(aid => {
-      const div = document.createElement('div');
-      div.className = 'aid-card';
-      div.innerHTML = `
-        <strong>${aid.name}</strong><br>
-        📍 ${aid.address} | 📞 ${aid.phone}<br>
-        <span style="color: var(--text-dim); font-size: 0.78rem;">services: ${aid.services.join(', ')}</span>
-      `;
-      legalAidList.appendChild(div);
-    });
+    if (legalAidList) {
+      legalAidList.innerHTML = '';
+      (data.legal_aid_resources || []).forEach(aid => {
+        const div = document.createElement('div');
+        div.className = 'aid-card';
+        div.innerHTML = `
+          <strong>${aid.name}</strong><br>
+          📍 ${aid.address} | 📞 ${aid.phone}<br>
+          <span style="color: var(--text-dim); font-size: 0.78rem;">services: ${aid.services.join(', ')}</span>
+        `;
+        legalAidList.appendChild(div);
+      });
+    }
 
     resultsSection.scrollIntoView({ behavior: 'smooth' });
   }
 
-  printLetterBtn.addEventListener('click', () => {
-    const printWin = window.open('', '_blank');
-    printWin.document.write(`
-      <html>
-        <head>
-          <title>Santa Cruz Formal Tenant Dispute Document</title>
-          <style>
-            body { font-family: 'Courier New', monospace; padding: 40px; line-height: 1.6; font-size: 14px; }
-            h2 { font-family: sans-serif; text-align: center; }
-          </style>
-        </head>
-        <body>
-          <pre>${disputeLetterBox.textContent}</pre>
-          <script>window.print();</script>
-        </body>
-      </html>
-    `);
-    printWin.document.close();
-  });
+  if (printLetterBtn) {
+    printLetterBtn.addEventListener('click', () => {
+      const printWin = window.open('', '_blank');
+      printWin.document.write(`
+        <html>
+          <head>
+            <title>Santa Cruz Formal Tenant Dispute Document</title>
+            <style>
+              body { font-family: 'Courier New', monospace; padding: 40px; line-height: 1.6; font-size: 14px; }
+              h2 { font-family: sans-serif; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <pre>${disputeLetterBox ? disputeLetterBox.textContent : ''}</pre>
+            <script>window.print();</script>
+          </body>
+        </html>
+      `);
+      printWin.document.close();
+    });
+  }
 });
